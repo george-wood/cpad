@@ -1,0 +1,15 @@
+# Keys
+title = "Keys"
+
+[primary]
+uid = "Unique identifier for each officer"
+uid_event = "Unique identifier for an event, e.g. uid_arrest"
+aid = "Unique identifier for an assignment"
+
+[alias]
+uid_arrest = "cb"
+uid_stop = "contact_card_id"
+uid_contact = "contact_card_id"
+uid_force = "trr_report_id"
+uid_warrant = "warrant_no"
+uid_ticket = "ticket_number"
