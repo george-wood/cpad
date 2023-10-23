@@ -13,40 +13,13 @@ box::use(
   import/roster,
   import/stop,
   import/ticket,
-  import/warrant,
+  import/warrant
 )
 
 # import
 df_assignment <-
   assignment$build(
     p602033 = utility$ls("assignment/p602033")
-  )
-
-df_arrest <-
-  arrest$build(
-    p701162 = utility$ls("arrest/p701162"),
-    p708085 = utility$ls("arrest/p708085")
-  )
-
-df_beat <-
-  beat$build(
-    p621077 = utility$ls("beat/p621077", reg = "1\\.csv$")
-  )
-
-df_contact <-
-  contact$build(
-    p058306 = utility$ls("contact_card/p058306")
-  )
-
-df_force <-
-  force$build(
-    report = utility$ls("trr/", reg = "0\\.csv$|p583646.*1\\.csv$"),
-    action = utility$ls("trr/", reg = "2\\.csv$")
-  )
-
-df_military <-
-  military$build(
-    p606699 = utility$ls("military", reg = "p606699_3")
   )
 
 df_roster <-
@@ -61,16 +34,6 @@ df_stop <-
     p646845 = utility$ls("isr/")
   )
 
-df_ticket <-
-  ticket$build(
-    path = utility$ls("ticket", reg = "tickets.csv")
-  )
-
-df_warrant <-
-  warrant$build(
-    p638148 = utility$ls("warrant/p638148", reg = "1\\.csv$")
-  )
-
 # build personnel frame
 df_personnel <-
   personnel$build(
@@ -80,6 +43,44 @@ df_personnel <-
       df_stop
     )
   ) # 81,429
+
+# continue import
+df_arrest <-
+  arrest$build(
+    p701162 = utility$ls("arrest/p701162"),
+    p708085 = utility$ls("arrest/p708085")
+  )
+
+df_beat <-
+  beat$build(
+    p621077 = utility$ls("beat/p621077", reg = "1\\.csv$")
+  )
+
+df_contact <-
+  contact$build(
+    p058306 = utility$ls("contact/p058306")
+  )
+
+df_force <-
+  force$build(
+    report = utility$ls("trr/", reg = "0\\.csv$|p583646.*1\\.csv$"),
+    action = utility$ls("trr/", reg = "2\\.csv$")
+  )
+
+df_military <-
+  military$build(
+    p606699 = utility$ls("military", reg = "p606699_3")
+  )
+
+# df_ticket <-
+#   ticket$build(
+#     path = utility$ls("ticket", reg = "tickets.csv")
+#   )
+
+df_warrant <-
+  warrant$build(
+    p638148 = utility$ls("warrant/p638148", reg = "1\\.csv$")
+  )
 
 # join uid
 join_cols <- c(
@@ -160,7 +161,7 @@ df_arrest <-
     df_assignment
   )
 
-df_contact <-
+df_contact <- # breaking?
   join$aid_asof(
     df_contact,
     df_assignment
@@ -178,12 +179,12 @@ df_stop <-
     df_assignment
   )
 
-df_ticket <-
-  join$aid_asof(
-    df_ticket,
-    df_assignment,
-    by = "star"
-  )
+# df_ticket <-
+#   join$aid_asof(
+#     df_ticket,
+#     df_assignment,
+#     by = "star"
+#   )
 
 # write parquet
 utility$write(df_arrest, dir = "arrest")
@@ -194,6 +195,6 @@ utility$write(df_force, dir = "force")
 utility$write(df_military, group = NULL, dir = "military")
 utility$write(df_roster, group = NULL, dir = "roster")
 utility$write(df_stop, dir = "stop")
-utility$write(df_ticket, dir = "ticket")
+# utility$write(df_ticket, dir = "ticket")
 utility$write(df_warrant, dir = "warrant")
 

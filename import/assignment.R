@@ -1,5 +1,7 @@
 '.__module__.'
 
+box::use(polars[pl])
+
 #' Source of data
 #' @export
 source <- function() {
@@ -24,44 +26,64 @@ source <- function() {
 #' Define the schema
 #' @export
 get_schema <- function() {
-
-  box::use(
-    arrow[schema, string, date32, timestamp]
+  list(
+    AA_DATE = "character",
+    UNIT = "character",
+    WATCH = "character",
+    BEAT = "character",
+    CAR_VEHICLE_NUMER = "character",
+    START_TIME = "character",
+    END_TIME = "character",
+    LAST_NME = "character",
+    FIRST_NME = "character",
+    MIDDLE_INITIAL = "character",
+    RANK = "character",
+    STAR_NO = "character",
+    GENDER = "character",
+    RACE = "character",
+    YEAR_OF_BIRTH = "double",
+    APPOINTMENT_DATE = "character",
+    PRESENT_FOR_DUTY = "character",
+    ABSENCE_CD = "character",
+    ABSENCE_DESCR = "character",
+    MODIFIED_BY_LAST = "character",
+    MODIFIED_BY_FIRST = "character",
+    MODIFIED_DATE = "character"
   )
-
-  schema(
-    date = string(),
-    unit = string(),
-    watch = string(),
-    beat = string(),
-    vehicle = string(),
-    dt_start = string(),
-    dt_end = string(),
-    last_name = string(),
-    first_name = string(),
-    middle_initial = string(),
-    rank = string(),
-    star = string(),
-    gender = string(),
-    race = string(),
-    yob = double(),
-    appointed = date32(),
-    present_for_duty = string(),
-    absence_code = string(),
-    absence_description = string(),
-    modified_by_last = string(),
-    modified_by_first = string(),
-    modified_date = timestamp()
-  )
-
 }
 
-parser <- function(col, format = "%H%M%d-%b-%Y") {
-  box::use(polars[pl])
+#' alias for column names
+alias <-
+  list(
+    date = "AA_DATE",
+    unit = "UNIT",
+    watch = "WATCH",
+    beat = "BEAT",
+    vehicle = "CAR_VEHICLE_NUMER",
+    dt_start = "START_TIME",
+    dt_end = "END_TIME",
+    last_name = "LAST_NME",
+    first_name = "FIRST_NME",
+    middle_initial = "MIDDLE_INITIAL",
+    rank = "RANK",
+    star = "STAR_NO",
+    gender = "GENDER",
+    race = "RACE",
+    yob = "YEAR_OF_BIRTH",
+    appointed = "APPOINTMENT_DATE",
+    present_for_duty = "PRESENT_FOR_DUTY",
+    absence_code = "ABSENCE_CD",
+    absence_description = "ABSENCE_DESCR",
+    modified_by_last = "MODIFIED_BY_LAST",
+    modified_by_first = "MODIFIED_BY_FIRST",
+    modified_date = "MODIFIED_DATE"
+  )
 
+#' Parse datetime columns
+parser <- function(col, format = "%H%M%d-%b-%Y") {
   pl$concat_str(
     pl$col(col)$str$zfill(4),
-    "date"
+    pl$col("date")
   )$str$strptime(
     datatype = pl$Datetime("ms"),
     format = format,
@@ -69,56 +91,52 @@ parser <- function(col, format = "%H%M%d-%b-%Y") {
   )
 }
 
-#' Read the data, apply schema, wrangle, and create identifier
-#' @export
-build <- function(p602033) {
-
-  box::use(
-    arrow[read_csv_arrow],
-    polars[pl],
-    purrr[map, list_rbind]
-  )
-
-  df <-
-    map(
-      p602033,
-      \(x)
-      read_csv_arrow(
-        file = x,
-        schema = get_schema(),
-        timestamp_parsers = "%Y-%m-%dT%H:%M:%S",
-        skip = 1
+#' Scan csv, apply schema, wrangle, and create identifier
+query <- function(x) {
+  pl$
+    scan_csv(
+      x,
+      overwrite_dtype = get_schema()
+    )$
+    rename(alias)$
+    with_columns(
+      parser("dt_start"),
+      parser("dt_end"),
+      pl$col("date")$str$strptime(pl$Date, format = "%d-%b-%Y"),
+      pl$col("present_for_duty")$str$contains("True"),
+      pl$col("beat")$str$replace_all(pattern = " |[[:punct:]]", value = ""),
+      pl$col("vehicle")$str$strip_chars()
+    )$
+    with_columns(
+      pl$when(
+        pl$col("dt_end")$lt(pl$col("dt_start"))
+      )$then(
+        pl$col("dt_end")$dt$offset_by("1d")
+      )$otherwise(
+        pl$col("dt_end")
       )
-    ) |>
-    list_rbind() |>
-    pl$DataFrame()
-
-  df$with_columns(
-    parser("dt_start"),
-    parser("dt_end"),
-    pl$col("date")$str$strptime(pl$Date, format = "%d-%b-%Y"),
-    pl$col("present_for_duty")$str$contains("True"),
-    pl$col("beat")$str$replace_all(pattern = " |[[:punct:]]", value = "")
-  )$with_columns(
-    pl$when(
-      pl$col("dt_end") < pl$col("dt_start")
-    )$then(
-      pl$col("dt_end")$dt$offset_by("1d")
-    )$otherwise(
-      pl$col("dt_end")
+    )$
+    group_by(
+      pl$all()$exclude("^modified.*$")
+    )$
+    agg(
+      pl$all()$sort_by("modified_date")$last()
+    )$
+    with_row_count(
+      "aid"
+    )$
+    with_columns(
+      pl$col("aid")$cast(pl$Utf8)$str$zfill(8)
+    )$
+    sort(
+      c("dt_start", "dt_end")
     )
-  )$groupby(
-    pl$all()$exclude("^modified.*$")
-  )$agg(
-    pl$all()$sort_by("modified_date")$last()
-  )$with_row_count(
-    "aid"
-  )$with_columns(
-    pl$col("aid")$cast(pl$Utf8)$str$zfill(8)
-  )$sort(
-    c("dt_start", "dt_end")
-  )
-
 }
 
-
+#' Execute the query
+#' @export
+build <- function(p602033) {
+  pl$
+    concat(lapply(p602033, query))$
+    collect()
+}
