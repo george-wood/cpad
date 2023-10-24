@@ -41,7 +41,7 @@ get_schema <- function() {
     STAR_NO = "character",
     GENDER = "character",
     RACE = "character",
-    YEAR_OF_BIRTH = "double",
+    YEAR_OF_BIRTH = "float64",
     APPOINTMENT_DATE = "character",
     PRESENT_FOR_DUTY = "character",
     ABSENCE_CD = "character",
@@ -52,7 +52,7 @@ get_schema <- function() {
   )
 }
 
-#' alias for column names
+#' Alias for column names
 alias <-
   list(
     date = "AA_DATE",
@@ -80,18 +80,18 @@ alias <-
   )
 
 #' Parse datetime columns
-parser <- function(col, format = "%H%M%d-%b-%Y") {
+parser <- function(col) {
   pl$concat_str(
     pl$col(col)$str$zfill(4),
     pl$col("date")
   )$str$strptime(
     datatype = pl$Datetime("ms"),
-    format = format,
+    format = "%H%M%d-%b-%Y",
     strict = FALSE
   )
 }
 
-#' Scan csv, apply schema, wrangle, and create identifier
+#' Scan csv with schema, wrangle, and create identifier
 query <- function(x) {
   pl$
     scan_csv(
@@ -103,6 +103,7 @@ query <- function(x) {
       parser("dt_start"),
       parser("dt_end"),
       pl$col("date")$str$strptime(pl$Date, format = "%d-%b-%Y"),
+      pl$col("appointed")$str$strptime(pl$Date, format = "%Y-%m-%d"),
       pl$col("present_for_duty")$str$contains("True"),
       pl$col("beat")$str$replace_all(pattern = " |[[:punct:]]", value = ""),
       pl$col("vehicle")$str$strip_chars()
@@ -140,3 +141,5 @@ build <- function(p602033) {
     concat(lapply(p602033, query))$
     collect()
 }
+
+

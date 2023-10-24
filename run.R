@@ -34,17 +34,6 @@ df_stop <-
     p646845 = utility$ls("isr/")
   )
 
-# build personnel frame
-df_personnel <-
-  personnel$build(
-    list(
-      df_roster,
-      df_assignment,
-      df_stop
-    )
-  ) # 81,429
-
-# continue import
 df_arrest <-
   arrest$build(
     p701162 = utility$ls("arrest/p701162"),
@@ -81,6 +70,16 @@ df_warrant <-
   warrant$build(
     p638148 = utility$ls("warrant/p638148", reg = "1\\.csv$")
   )
+
+# build personnel frame
+df_personnel <-
+  personnel$build(
+    list(
+      df_roster,
+      df_assignment,
+      df_stop
+    )
+  ) # 81,429
 
 # join uid
 join_cols <- c(
