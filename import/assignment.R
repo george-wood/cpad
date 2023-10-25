@@ -98,7 +98,14 @@ query <- function(x) {
       x,
       overwrite_dtype = get_schema()
     )$
-    rename(alias)$
+    rename(alias)
+}
+
+#' Execute the query
+#' @export
+build <- function(p602033) {
+  pl$
+    concat(lapply(p602033, query))$
     with_columns(
       parser("dt_start"),
       parser("dt_end"),
@@ -131,14 +138,7 @@ query <- function(x) {
     )$
     sort(
       c("dt_start", "dt_end")
-    )
-}
-
-#' Execute the query
-#' @export
-build <- function(p602033) {
-  pl$
-    concat(lapply(p602033, query))$
+    )$
     collect()
 }
 
