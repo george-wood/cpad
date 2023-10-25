@@ -30,6 +30,14 @@ write <- function(x, group = "dt", dir) {
     rlang[sym]
   )
 
+  x <-
+    x$drop(
+      c("last_name",
+        "first_name",
+        "middle_initial",
+        "star")
+    )
+
   if (is.null(group)) {
     x <- x$to_data_frame()
   } else {
