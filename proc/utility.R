@@ -1,14 +1,20 @@
 #' List files in a directory with regex option
 #' @export
-ls <- function(path, reg = "\\.csv$", base = "", ...) {
+ls <- function(path, reg = "\\.csv$", base = "~/Documents/data/cpd/",
+               ...) {
   box::use(fs[dir_ls])
 
   dir_ls(
-    path    = paste0("~/Documents/data/cpd/", path),
+    path    = paste0(base, path),
     regexp  = reg,
     recurse = TRUE,
     ...
   )
+}
+
+#' @export
+glob <- function(path, base = "~/Documents/data/cpd/") {
+  paste0(base, path)
 }
 
 #' Write dataframe to parquet dataset
