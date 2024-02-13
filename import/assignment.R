@@ -96,7 +96,7 @@ query <- function(x) {
   pl$
     scan_csv(
       x,
-      overwrite_dtype = get_schema()
+      dtypes = get_schema()
     )$
     rename(alias)
 }

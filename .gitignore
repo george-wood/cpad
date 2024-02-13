@@ -1,6 +1,7 @@
 # Data
 db/
 csv/
+private/
 
 # OS
 .DS_Store
