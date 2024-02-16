@@ -1,3 +1,5 @@
+'.__module__.'
+
 #' List files in a directory with regex option
 #' @export
 ls <- function(path, reg = "\\.csv$", base = "~/Documents/data/cpd/",

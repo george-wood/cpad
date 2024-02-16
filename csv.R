@@ -16,7 +16,14 @@ pl$
   scan_parquet("db/stop/*/*.parquet")$
   sink_csv("csv/stop.csv")
 
+# assignment data with names
 pl$
-  scan_parquet("private/assignment/*/*.parquet")$
-  sink_csv("csv/assignment_names.csv")
+  read_parquet("db/assignment/*/*.parquet")$
+  join(
+    other = df_personnel$unique("uid")$drop(c("star", "appointed_year")),
+    on = c("uid", "appointed", "yob"),
+    how = "left"
+  )$
+  write_csv("csv/assignment_names.csv")
+
 

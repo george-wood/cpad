@@ -27,7 +27,7 @@ build <- function(l) {
     )$
     unique()$
     sort("appointed", "yob", "last_name", "star")$
-    with_row_count("uid")$
+    with_row_index("uid")$
     with_columns(
       pl$
         col("uid")$

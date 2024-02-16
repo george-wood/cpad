@@ -130,7 +130,7 @@ build <- function(p602033) {
     agg(
       pl$all()$sort_by("modified_date")$last()
     )$
-    with_row_count(
+    with_row_index(
       "aid"
     )$
     with_columns(
