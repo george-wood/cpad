@@ -114,6 +114,12 @@ polarize <- function(x, sort_by = "dt") {
       )
     )$dt$replace_time_zone(
       NULL
+    ),
+    pl$col(
+      pl$String
+    )$replace(
+      "",
+      NULL
     )
   )$sort(
     sort_by
