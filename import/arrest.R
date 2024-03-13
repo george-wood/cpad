@@ -1,5 +1,7 @@
 '.__module__.'
 
+box::use(polars[pl])
+
 #' Source of data
 #' @export
 source <- function() {
@@ -15,37 +17,34 @@ source <- function() {
 #' @export
 get_schema <- function(reference) {
 
-  box::use(
-    arrow[schema, string, timestamp, date32]
-  )
-
-  schm <- list(
-    p701162 = schema(
-      first_name = string(),
-      middle_initial = string(),
-      last_name = string(),
-      race = string(),
-      gender = string(),
-      role = string(),
-      uid_arrest = string(),
-      rd = string(),
-      dt = timestamp(),
-      civilian_race = string(),
-      civilian_age = double(),
-      civilian_gender = string(),
-      statute = string(),
-      charge_type = string()
-    ),
-    p708085 = schema(
-      uid_arrest = string(),
-      dt = timestamp(),
-      role = string(),
-      first_name = string(),
-      last_name = string(),
-      appointed = date32(),
-      yob = double()
+  schm <-
+    list(
+      p701162 = list(
+        `PO FIRST NAME` = "character",
+        `PO MIDDLE NAME` = "character",
+        `PO LAST NAME` = "character",
+        `PO RACE` = "character",
+        `PO GENDER` = "character",
+        ROLE = "character",
+        CB = "character",
+        RD = "character",
+        `ARREST DATE/TIME` = "character", # timestamp
+        `ARRESTEE RACE` = "character",
+        `ARRESTEE AGE` = "float64",
+        `ARRESTEE RACE` = "character",
+        STATUTE = "character",
+        `CHARGE TYPE` = "character"
+      ),
+      p708085 = list(
+        `CB NO` = "character",
+        DATETIME = "character", # timestamp
+        `EMPLOYEE ROLE` = "character",
+        `FIRST NAME` = "character",
+        `LAST NAME` = "character",
+        `APPOINTED DATE` = "character", # date32
+        `YOB` = "float64"
+      )
     )
-  )
 
   if (missing(reference)) {
     schm
@@ -55,51 +54,112 @@ get_schema <- function(reference) {
 
 }
 
-#' Read the data, apply schema, bind and filter
-reader <- function(path) {
+#' Alias for column names
+alias <- function(reference) {
 
-  box::use(
-    arrow[read_csv_arrow],
-    purrr[map, list_rbind],
-    dplyr[filter, distinct],
-    proc/utility[get_reference]
-  )
-
-  map(
-    path,
-    \(x)
-    read_csv_arrow(
-      file = x,
-      schema = get_schema(
-        get_reference(x)
+  als <-
+    list(
+      p701162 = list(
+        first_name = "PO FIRST NAME",
+        middle_initial = "PO MIDDLE NAME",
+        last_name = "PO LAST NAME",
+        race = "PO RACE",
+        gender = "PO GENDER",
+        role = "ROLE",
+        uid_arrest = "CB",
+        rd = "RD",
+        dt = "ARREST DATE/TIME",
+        civilian_race = "ARRESTEE RACE",
+        civilian_age = "ARRESTEE AGE",
+        civilian_gender = "ARRESTEE GENDER",
+        statute = "STATUTE",
+        charge_type = "CHARGE TYPE"
       ),
-      timestamp_parsers = c(
-        "%d-%b-%Y %H:%M",
-        "%Y-%m-%d %H:%M:%S"
-      ),
-      skip = 1
+      p708085 = list(
+        uid_arrest = "CB NO",
+        dt = "DATETIME",
+        role = "EMPLOYEE ROLE",
+        first_name = "FIRST NAME",
+        last_name = "LAST NAME",
+        appointed = "APPOINTED DATE",
+        yob = "YOB"
+      )
     )
-  ) |>
-    list_rbind() |>
-    filter(uid_arrest != "J") |>
-    distinct()
 
+  if (missing(reference)) {
+    als
+  } else {
+    als[[reference]]
+  }
+
+}
+
+#' Scan csv with schema, wrangle, and create identifier
+query <- function(x, reference) {
+  pl$
+    scan_csv(
+      x,
+      dtypes = get_schema(reference),
+      try_parse_dates = FALSE
+    )$
+    rename(
+      alias(reference)
+    )$
+    filter(
+      pl$col("uid_arrest")$neq("J")
+    )$
+    with_columns(
+      pl$coalesce(
+        pl$
+          col("dt")$
+          str$strptime(
+            pl$Datetime(),
+            format = "%d-%b-%Y %H:%M",
+            strict = FALSE
+          ),
+        pl$
+          col("dt")$
+          str$strptime(
+            pl$Datetime(),
+            format = "%Y-%m-%d %H:%M:%S",
+            strict = FALSE
+          )
+      )
+    )$
+    unique()
 }
 
 #' Execute read, bind, filter and write dataset
 #' @export
 build <- function(p701162, p708085) {
-
-  box::use(
-    dplyr[left_join],
-    proc/utility[polarize]
-  )
-
-  left_join(
-    reader(p701162),
-    reader(p708085),
-    by = c("uid_arrest", "dt", "role", "last_name", "first_name")
-  ) |>
-    polarize()
-
+  query(
+    p701162,
+    reference = "p701162"
+  )$
+    join(
+      other = query(
+        p708085,
+        reference = "p708085"
+      ),
+      on = c(
+        "uid_arrest",
+        "dt",
+        "role",
+        "last_name",
+        "first_name"
+      ),
+      how = "left"
+    )$
+    with_columns(
+      pl$
+        col("appointed")$
+        str$strptime(
+          pl$Date,
+          format = "%Y-%m-%d",
+          strict = FALSE
+        )
+    )
 }
+
+
+
