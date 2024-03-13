@@ -13,48 +13,76 @@ source <- function() {
 #' Define the schema
 #' @export
 get_schema <- function() {
-
-  box::use(
-    arrow[schema, string, date32]
+  list(
+    LAST_NME = "character",
+    MI = "character",
+    FIRST_NME = "character",
+    DESCR = "character",
+    STAR_NO = "character",
+    RACE = "character",
+    SEX = "character",
+    BIRTH_YEAR = "float64",
+    APPOINTED_DATE = "character", # date32
+    ACT_BRANCH = "character",
+    ACT_RANK = "character",
+    ACT_DATE_DISCHARGED = "character", # date32
+    ACT_DISCHARGE_TYPE = "character",
+    START_DATE = "character", # date32
+    RES_BRANCH = "character",
+    RES_RANK = "character",
+    RES_DATE_DISCHARGED = "character", # date32
+    RES_DISCHARGE_TYPE = "character"
   )
+}
 
-  schema(
-    last_name = string(),
-    middle_initial = string(),
-    first_name = string(),
-    description = string(),
-    star = string(),
-    race = string(),
-    gender = string(),
-    yob = double(),
-    appointed = date32(),
-    active_branch = string(),
-    active_rank = string(),
-    active_discharged = date32(),
-    active_discharge_type = string(),
-    reserve_start = date32(),
-    reserve_branch = string(),
-    reserve_rank = string(),
-    reserve_discharged = date32(),
-    reserve_discharge_type = string()
+
+#' Alias for column names
+alias <- function() {
+  list(
+    last_name = "LAST_NME",
+    middle_initial = "MI",
+    first_name = "FIRST_NME",
+    description = "DESCR",
+    star = "STAR_NO",
+    race = "RACE",
+    gender = "SEX",
+    yob = "BIRTH_YEAR",
+    appointed = "APPOINTED_DATE",
+    active_branch = "ACT_BRANCH",
+    active_rank = "ACT_RANK",
+    active_discharged = "ACT_DATE_DISCHARGED",
+    active_discharge_type = "ACT_DISCHARGE_TYPE",
+    reserve_start = "START_DATE",
+    reserve_branch = "RES_BRANCH",
+    reserve_rank = "RES_RANK",
+    reserve_discharged = "RES_DATE_DISCHARGED",
+    reserve_discharge_type = "RES_DISCHARGE_TYPE"
   )
-
 }
 
 #' Read the data, apply schema, and write dataset
 #' @export
 build <- function(p606699) {
-
-  box::use(
-    arrow[read_csv_arrow],
-    proc/utility[polarize]
-  )
-
-  read_csv_arrow(
-    file = p606699,
-    schema = get_schema(),
-    skip = 1
-  ) |>
-    polarize(sort_by = "appointed")
-
+  pl$scan_csv(
+    p606699,
+    dtypes = get_schema(),
+    try_parse_dates = FALSE
+  )$
+    rename(
+      alias()
+    )$
+    with_columns(
+      pl$col("appointed")$
+        str$strptime(pl$Date, format = "%Y-%m-%d"),
+      pl$col("active_discharged")$
+        str$strptime(pl$Date, format = "%Y-%m-%d"),
+      pl$col("reserve_start")$
+        str$strptime(pl$Date, format = "%Y-%m-%d"),
+      pl$col("reserve_discharged")$
+        str$strptime(pl$Date, format = "%Y-%m-%d")
+    )$
+    sort(
+      "appointed"
+    )$
+    unique()
 }
