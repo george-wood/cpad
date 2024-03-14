@@ -1,5 +1,7 @@
 '.__module__.'
 
+box::use(polars[pl])
+
 #' Source of data
 #' @export
 source <- function() {
@@ -9,75 +11,88 @@ source <- function() {
 #' Define the schema
 #' @export
 get_schema <- function() {
-
-  box::use(
-    arrow[schema, date32, string, timestamp]
+  list(
+    ticket_number = "character",
+    issue_date = "character", # timestamp
+    violation_location = "character",
+    license_plate_number = "character",
+    license_plate_state = "character",
+    license_plate_type = "character",
+    zipcode = "character",
+    violation_code = "character",
+    violation_description = "character",
+    unit = "character",
+    unit_description = "character",
+    vehicle_make = "character",
+    fine_level1_amount = "float64",
+    fine_level2_amount = "float64",
+    current_amount_due = "float64",
+    total_payments = "float64",
+    ticket_queue = "character",
+    ticket_queue_date = "character", # timestamp
+    notice_level = "character",
+    notice_number = "character",
+    hearing_disposition = "character",
+    officer = "character",
+    normalized_address = "character",
+    year = "integer",
+    month = "integer",
+    hour = "integer",
+    ward = "character",
+    tract_id = "character",
+    blockgroup_geoid = "character",
+    community_area_number = "character",
+    community_area_name = "character",
+    geocode_accuracy = "float64",
+    geocode_accuracy_type = "character",
+    geocoded_address = "character",
+    geocoded_lng = "float64",
+    geocoded_lat = "float64"
   )
+}
 
-  schema(
-    uid_ticket = string(),
-    dt = timestamp(),
-    violation_location = string(),
-    license_plate_number = string(),
-    license_plate_state = string(),
-    license_plate_type = string(),
-    zipcode = string(),
-    violation_code = string(),
-    violation_description = string(),
-    unit = string(),
-    unit_description = string(),
-    vehicle_make = string(),
-    fine_level1_amount = double(),
-    fine_level2_amount = double(),
-    current_amount_due = double(),
-    total_payments = double(),
-    ticket_queue = string(),
-    ticket_queue_date = timestamp(),
-    notice_level = string(),
-    notice_number = string(),
-    hearing_disposition = string(),
-    star = string(),
-    normalized_address = string(),
-    year = double(),
-    month = double(),
-    hour = double(),
-    ward = string(),
-    tract_id = string(),
-    blockgroup_geoid = string(),
-    community_area_number = string(),
-    community_area_name = string(),
-    geocode_accuracy = double(),
-    geocode_accuracy_type = string(),
-    geocoded_address = string(),
-    longitude = double(),
-    latitude = double()
+#' Alias for column names
+alias <- function() {
+  list(
+    uid_ticket = "ticket_number",
+    dt = "issue_date",
+    star = "officer",
+    longitude = "geocoded_lng",
+    latitude = "geocoded_lat"
   )
-
 }
 
 #' Read the data, apply schema, and write dataset
 #' @export
 build <- function(path) {
-
-  box::use(
-    arrow[read_csv_arrow],
-    dplyr[filter],
-    polars[pl],
-    proc/utility[polarize]
-  )
-
-  res <-
-    read_csv_arrow(
-      file = path,
-      schema = get_schema(),
-      skip = 1
-    ) |>
+  pl$
+    scan_csv(
+      path,
+      dtypes = get_schema(),
+      try_parse_dates = FALSE
+    )$
+    rename(
+      alias()
+    )$
     filter(
-      year >= 2014
-    ) |>
-    polarize()
-
-  res$with_columns(pl$col("star")$str$replace("^0+", ""))
-
+      pl$col("year")$gt(2013)
+    )$
+    with_columns(
+      pl$
+        col("issue_date")$
+        str$to_datetime(
+          format = "%Y-%m-%d %H:%M:%S",
+          strict = FALSE
+        ),
+      pl$
+        col("ticket_queue_date")$
+        str$to_datetime(
+          format = "%Y-%m-%d %H:%M:%S",
+          strict = FALSE
+        ),
+      pl$
+        col("star")$
+        str$replace("^0+", "")
+    )
 }
 
