@@ -1,5 +1,7 @@
 '.__module__.'
 
+box::use(polars[pl])
+
 #' Source of data
 #' @export
 source <- function() {
@@ -13,59 +15,86 @@ source <- function() {
 #' Define the schema
 #' @export
 get_schema <- function() {
-
-  box::use(
-    arrow[schema, string]
+  list(
+    WARRANT_NO = "character",
+    WARRANT_TYPE = "character",
+    WARRANT_EXECUTED_DATE = "character",
+    CITY = "character",
+    STATE = "character",
+    ZIP = "character",
+    BEAT = "character",
+    AREA = "character",
+    STREET_NO = "character",
+    STREET_DIR = "character",
+    STREET_NME = "character",
+    LAST_NME = "character",
+    FIRST_NME = "character",
+    MIDDLE_INITIAL = "character",
+    YOB = "integer",
+    YEAR_APPOINTED = "integer",
+    CPD_STAR_NO = "character",
+    UNIT_NO = "character",
+    BEAT_NO = "character",
+    ROLE = "character",
+    WARRANT_ISSUED_DATE = "character",
+    ARREST_MADE_I = "logical",
+    PROPERTY_RECOVERED_I = "logical"
   )
+}
 
-  schema(
-    uid_warrant = string(),
-    type = string(),
-    dt = string(),
-    city = string(),
-    state = string(),
-    zip = string(),
-    beat = string(),
-    area = string(),
-    street_number = string(),
-    street_direction = string(),
-    street = string(),
-    last_name = string(),
-    first_name = string(),
-    middle_initial = string(),
-    yob = double(),
-    appointed_year = double(),
-    star = string(),
-    unit = string(),
-    beat_assignment = string(),
-    role = string(),
-    issued = string(),
-    arrest = string(),
-    property_recovered = string()
+#' Alias for column names
+alias <- function() {
+  list(
+    uid_warrant = "WARRANT_NO",
+    type = "WARRANT_TYPE",
+    date = "WARRANT_EXECUTED_DATE",
+    city = "CITY",
+    state = "STATE",
+    zip = "ZIP",
+    beat = "BEAT",
+    area = "AREA",
+    street_number = "STREET_NO",
+    street_direction = "STREET_DIR",
+    street = "STREET_NME",
+    last_name = "LAST_NME",
+    first_name = "FIRST_NME",
+    middle_initial = "MIDDLE_INITIAL",
+    yob = "YOB",
+    appointed_year = "YEAR_APPOINTED",
+    star = "CPD_STAR_NO",
+    unit = "UNIT_NO",
+    beat_assignment = "BEAT_NO",
+    role = "ROLE",
+    issued = "WARRANT_ISSUED_DATE",
+    arrest = "ARREST_MADE_I",
+    property_recovered = "PROPERTY_RECOVERED_I"
   )
-
 }
 
 #' Read the data, apply schema, and write dataset
 #' @export
 build <- function(p638148) {
-
-  box::use(
-    arrow[read_csv_arrow],
-    dplyr[mutate],
-    proc/utility[parse_dt, polarize]
-  )
-
-  read_csv_arrow(
-    file = p638148,
-    schema = get_schema(),
-    skip = 1
-  ) |>
-    mutate(
-      dt = parse_dt(dt, format = "%d-%b-%y"),
-      issued = parse_dt(issued, format = "%d-%b-%y"),
-      across(c(arrest, property_recovered), as.logical)
-    ) |>
-    polarize()
-
+  pl$
+    scan_csv(
+      p638148,
+      dtypes = get_schema(),
+      try_parse_dates = FALSE
+    )$
+    rename(
+      alias()
+    )$
+    with_columns(
+      pl$
+        col("date")$
+        str$to_date(
+          format = "%d-%b-%y",
+          strict = FALSE
+        ),
+      pl$
+        col("issued")$
+        str$to_date(
+          format = "%d-%b-%y",
+          strict = FALSE
+        )
+    )
 }
