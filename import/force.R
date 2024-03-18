@@ -77,7 +77,7 @@ get_schema <- function() {
 }
 
 #' Alias for column names
-alias <- function(reference) {
+alias <- function() {
   list(
     # report
     uid_force = "TRR_REPORT_ID",
