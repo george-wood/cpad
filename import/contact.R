@@ -12,6 +12,15 @@ source <- function() {
   )
 }
 
+#' Path to data
+path <- function() {
+  box::use(../proc/utility[ls])
+
+  list(
+    p058306 = ls("contact/p058306")
+  )
+}
+
 #' Define the schema
 #' @export
 get_schema <- function() {
@@ -83,10 +92,10 @@ alias <- function() {
 
 #' Read the data, apply schema, and write dataset
 #' @export
-query <- function(p058306) {
+query <- function() {
   pl$
     scan_csv(
-      p058306,
+      path()$p058306,
       dtypes = get_schema(),
       try_parse_dates = FALSE
     )$
@@ -131,7 +140,6 @@ query <- function(p058306) {
       )
     )
 }
-
 
 #' Melt the officer information, pivot by role, and rejoin
 #' @export
@@ -181,10 +189,6 @@ melt <- function(q) {
 
 #' Wrapper to scan the data, apply schema, and wrangle
 #' @export
-build <- function(p058306) {
-  melt(
-    query(
-      p058306
-    )
-  )
+build <- function() {
+  melt(query())
 }

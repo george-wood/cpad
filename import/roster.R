@@ -14,6 +14,17 @@ source <- function() {
   )
 }
 
+#' Path to data
+path <- function() {
+  box::use(../proc/utility[ls])
+
+  list(
+    p058155 = ls("roster/p058155"),
+    p540798 = ls("roster/p540798"),
+    p596580 = ls("roster/p596580")
+  )
+}
+
 #' Define the schema
 #' @export
 get_schema <- function() {
@@ -46,7 +57,7 @@ get_schema <- function() {
 }
 
 #' Alias for column names
-alias <- function(reference) {
+alias <- function() {
   list(
     # p058155
     first_name = "First Name",
@@ -88,15 +99,15 @@ key <- function() {
 
 #' Read the data, apply schema, and wrangle
 #' @export
-build <- function(p058155, p540798, p596580) {
+build <- function() {
 
   pl$
     concat(
       lapply(
         list(
-          p058155,
-          p540798,
-          p596580
+          path()$p058155,
+          path()$p540798,
+          path()$p596580
         ),
         \(x)
         pl$

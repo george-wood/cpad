@@ -2,7 +2,6 @@ options(box.path = box::file())
 
 box::use(
   polars[pl],
-  proc/utility[ls],
   import/arrest,
   import/assignment,
   import/beat,
@@ -15,81 +14,43 @@ box::use(
 )
 
 arrest$
-  build(
-    p701162 = ls("arrest/p701162"),
-    p708085 = ls("arrest/p708085")
-  )$
-  sink_parquet(
-    path = "db/arrest.parquet"
-  )
+  build()$
+  sink_parquet("db/arrest.parquet")
 
 assignment$
-  build(
-    p602033 = ls("assignment/p602033")
-  )$
+  build()$
   collect()$
-  write_parquet(
-    path = "db/assignment.parquet"
-  )
+  write_parquet("db/assignment.parquet")
 
 beat$
-  build(
-    p621077 = ls("beat/p621077", reg = "_1")
-  )$
-  sink_parquet(
-    path = "db/beat.parquet"
-  )
+  build()$
+  sink_parquet("db/beat.parquet")
 
 contact$
-  build(
-    p058306 = ls("contact/p058306")
-  )$
+  build()$
   collect()$
-  write_parquet(
-    path = "db/contact.parquet"
-  )
+  write_parquet("db/contact.parquet")
 
 military$
-  build(
-    p606699 = ls("military", reg = "_3")
-  )$
-  sink_parquet(
-    path = "db/military.parquet"
-  )
+  build()$
+  sink_parquet("db/military.parquet")
 
 force$
-  build(
-    report = ls("trr/", reg = "_0|p583646_1"),
-    action = ls("trr/", reg = "_2")
-  )$
+  build()$
   collect()$
-  write_parquet(
-    "db/force.parquet"
-  )
+  write_parquet("db/force.parquet")
 
 roster$
-  build(
-    p058155 = ls("roster/p058155"),
-    p540798 = ls("roster/p540798"),
-    p596580 = ls("roster/p596580")
-  )$
-  sink_parquet(
-    "db/roster.parquet"
-  )
+  build()$
+  sink_parquet("db/roster.parquet")
 
 stop$
-  build(
-    p646845 = ls("isr")
-  )$
+  build()$
   collect()$
-  write_parquet(
-    path = "db/stop.parquet"
-  )
+  write_parquet("db/stop.parquet")
 
 warrant$
-  build(
-    p638148 = ls("warrant/p638148", reg = "_1")
-  )$
-  sink_parquet(
-    path = "db/warrant.parquet"
-  )
+  build()$
+  sink_parquet("db/warrant.parquet")
+
+

@@ -13,6 +13,16 @@ source <- function() {
   )
 }
 
+#' Path to data
+path <- function() {
+  box::use(../proc/utility[ls])
+
+  list(
+    report = ls("trr/", reg = "_0|p583646_1"),
+    action = ls("trr/", reg = "_2")
+  )
+}
+
 #' Define the schema
 #' @export
 get_schema <- function() {
@@ -140,12 +150,12 @@ alias <- function() {
 
 #' Read the data, apply schema, and write dataset
 #' @export
-build <- function(report, action) {
+build <- function() {
   box::use(polars[pl])
 
   pl$concat(
     lapply(
-      report,
+      path()$report,
       \(x)
       pl$
         scan_csv(
@@ -219,7 +229,7 @@ build <- function(report, action) {
       other =
         pl$concat(
           lapply(
-            action,
+            path()$action,
             \(x)
             pl$
               scan_csv(

@@ -12,6 +12,15 @@ source <- function() {
   )
 }
 
+#' Path to data
+path <- function() {
+  box::use(../proc/utility[ls])
+
+  list(
+    p606699 = ls("military", reg = "_3")
+  )
+}
+
 #' Define the schema
 #' @export
 get_schema <- function() {
@@ -63,10 +72,10 @@ alias <- function() {
 
 #' Read the data, apply schema, and write dataset
 #' @export
-build <- function(p606699) {
+build <- function() {
   pl$
     scan_csv(
-      p606699,
+      path()$p606699,
       dtypes = get_schema(),
       try_parse_dates = FALSE
     )$

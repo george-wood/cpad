@@ -11,6 +11,17 @@ source <- function() {
   )
 }
 
+#' Path to data
+path <- function() {
+  box::use(../proc/utility[ls])
+
+  list(
+    p058155   = ls("roster/", reg = "p058155_0"),
+    p596580_4 = ls("roster/", reg = "p596580_4"),
+    p596580_2 = ls("roster/", reg = "p596580_2")
+  )
+}
+
 #' Define the schema
 #' @export
 get_schema <- function() {
@@ -76,7 +87,7 @@ get_schema <- function() {
 }
 
 #' Alias for column names
-alias <- function(reference) {
+alias <- function() {
   list(
     # p596580
     first_name = "FIRST_NME",
@@ -140,24 +151,23 @@ alias <- function(reference) {
 
 #' Read the data, apply schema, and wrangle
 #' @export
-build <- function(p058155, p596580_2, p596580_4) {
+build <- function() {
 
   pl$
     concat(
-      # p058155
       pl$
         scan_csv(
-          p058155,
+          path()$p058155,
           dtypes = get_schema(),
           try_parse_dates = FALSE
         )$
         rename(
-          intersect(alias(), pl$scan_csv(p058155)$columns)
+          intersect(alias(), pl$scan_csv(path()$p058155)$columns)
         )$
         melt(
           id_vars = grep(
             pattern = "star[0-9]{1}",
-            x = names(intersect(alias(), pl$scan_csv(p058155)$columns)),
+            x = names(intersect(alias(), pl$scan_csv(path()$p058155)$columns)),
             value = TRUE,
             invert = TRUE
           ),
@@ -173,15 +183,14 @@ build <- function(p058155, p596580_2, p596580_4) {
             str$to_date(format = "%m/%d/%y", strict = FALSE)
         )$
         drop("star_index"),
-      # p596580
       pl$
         scan_csv(
-          p596580_2,
+          path()$p596580_2,
           dtypes = get_schema(),
           try_parse_dates = FALSE
         )$
         rename(
-          intersect(alias(), pl$scan_csv(p596580_2)$columns)
+          intersect(alias(), pl$scan_csv(path()$p596580_2)$columns)
         )$
         with_columns(
           pl$
@@ -201,12 +210,12 @@ build <- function(p058155, p596580_2, p596580_4) {
           other =
             pl$
             scan_csv(
-              p596580_4,
+              path()$p596580_4,
               dtypes = get_schema(),
               try_parse_dates = FALSE
             )$
             rename(
-              intersect(alias(), pl$scan_csv(p596580_4)$columns)
+              intersect(alias(), pl$scan_csv(path()$p596580_4)$columns)
             )$
             with_columns(
               pl$

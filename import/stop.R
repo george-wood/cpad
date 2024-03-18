@@ -12,6 +12,15 @@ source <- function() {
   )
 }
 
+#' Path to data
+path <- function() {
+  box::use(../proc/utility[ls])
+
+  list(
+    p646845 = ls("isr")
+  )
+}
+
 #' Define the schema
 #' @export
 get_schema <- function() {
@@ -397,10 +406,10 @@ alias <- function() {
 
 #' Scan csv with schema, wrangle, and create identifier
 #' @export
-query <- function(x) {
+query <- function() {
   pl$
     scan_csv(
-      x,
+      path()$p646845,
       dtypes = get_schema(),
       null_values = c("", " "),
       try_parse_dates = FALSE
@@ -485,9 +494,5 @@ melt <- function(q) {
 #' Wrapper to scan the data, apply schema, and wrangle
 #' @export
 build <- function(p646845) {
-  melt(
-    query(
-      p646845
-    )
-  )
+  melt(query())
 }

@@ -13,6 +13,16 @@ source <- function() {
   )
 }
 
+#' Path to data
+path <- function() {
+  box::use(../proc/utility[ls])
+
+  list(
+    p701162 = ls("arrest/p701162"),
+    p708085 = ls("arrest/p708085")
+  )
+}
+
 #' Define the schema
 #' @export
 get_schema <- function() {
@@ -73,7 +83,7 @@ alias <- function() {
 }
 
 #' Scan csv with schema, wrangle, and create identifier
-query <- function(x, reference) {
+query <- function(x) {
   pl$
     scan_csv(
       x,
@@ -107,13 +117,13 @@ query <- function(x, reference) {
 
 #' Execute read, bind, filter and write dataset
 #' @export
-build <- function(p701162, p708085) {
+build <- function() {
   query(
-    p701162
+    path()$p701162
   )$
     join(
       other = query(
-        p708085
+        path()$p708085
       ),
       on = c(
         "uid_arrest",

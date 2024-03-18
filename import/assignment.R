@@ -23,6 +23,15 @@ source <- function() {
   )
 }
 
+#' Path to data
+path <- function() {
+  box::use(../proc/utility[ls])
+
+  list(
+    p602033 = ls("assignment/p602033")
+  )
+}
+
 #' Define the schema
 #' @export
 get_schema <- function() {
@@ -82,10 +91,10 @@ alias <- function() {
 
 #' Scan csv with schema, wrangle, and create identifier
 #' @export
-build <- function(p602033) {
+build <- function() {
   pl$
     scan_csv(
-      p602033,
+      path()$p602033,
       dtypes = get_schema(),
       try_parse_dates = FALSE
     )$

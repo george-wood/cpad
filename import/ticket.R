@@ -8,12 +8,21 @@ source <- function() {
   "www.propublica.org/datastore/dataset/chicago-parking-ticket-data"
 }
 
+#' Path to data
+path <- function() {
+  box::use(../proc/utility[ls])
+
+  list(
+    parking = ls("ticket", reg = "parking_tickets.csv")
+  )
+}
+
 #' Define the schema
 #' @export
 get_schema <- function() {
   list(
     ticket_number = "character",
-    issue_date = "character", # timestamp
+    issue_date = "character",
     violation_location = "character",
     license_plate_number = "character",
     license_plate_state = "character",
@@ -29,7 +38,7 @@ get_schema <- function() {
     current_amount_due = "float64",
     total_payments = "float64",
     ticket_queue = "character",
-    ticket_queue_date = "character", # timestamp
+    ticket_queue_date = "character",
     notice_level = "character",
     notice_number = "character",
     hearing_disposition = "character",
@@ -64,10 +73,10 @@ alias <- function() {
 
 #' Read the data, apply schema, and write dataset
 #' @export
-build <- function(path) {
+build <- function() {
   pl$
     scan_csv(
-      path,
+      path()$parking,
       dtypes = get_schema(),
       try_parse_dates = FALSE
     )$
