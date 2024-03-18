@@ -28,7 +28,7 @@ get_schema <- function() {
     FO_APPOINTED_DT = "character",
     FO_SEX = "character",
     FO_RACE = "character",
-    FO_BIRTH_YR = "float64",
+    FO_BIRTH_YR = "integer",
     SO_LAST = "character",
     SO_MIDDLE_INITIAL = "character",
     SO_FIRST = "character",
@@ -36,7 +36,7 @@ get_schema <- function() {
     SO_APPOINTED_DATE = "character",
     SO_SEX = "character",
     SO_RACE = "character",
-    SO_BIRTH_YR = "float64",
+    SO_BIRTH_YR = "integer",
     SUPV_LAST = "character",
     SUPV_MIDDLE_INITIAL = "character",
     SUPV_FIRST = "character",
@@ -44,7 +44,7 @@ get_schema <- function() {
     SUPV_APPOINTED_DATE = "character",
     SUPV_SEX = "character",
     SUPV_RACE = "character",
-    SUPV_BIRTH_YR = "float64",
+    SUPV_BIRTH_YR = "integer",
     CLOTHING_DESCR = "character",
     RD = "character",
     EVENT_NO = "character",
@@ -70,8 +70,8 @@ get_schema <- function() {
     AREA = "character",
     WARD = "character",
     LOCATION_CD = "character",
-    AGE = "float64",
-    AGE_TO = "float64",
+    AGE = "integer",
+    AGE_TO = "integer",
     SEX_CODE_CD = "character",
     RACE = "character",
     HEIGHT = "character",
@@ -182,7 +182,7 @@ get_schema <- function() {
     S_STOLEN_PROPERTY_I = "character",
     S_STOLEN_PROPERTY_INVENTORY_NO = "character",
     VEHICLE_STOPPED_I = "character",
-    V_YEAR = "float64",
+    V_YEAR = "integer",
     PROXIMITY_TO_CRIME_I = "character",
     BODY_CAMERA_I = "character",
     CAR_CAMERA_I = "character",
@@ -396,6 +396,7 @@ alias <- function() {
 }
 
 #' Scan csv with schema, wrangle, and create identifier
+#' @export
 query <- function(x) {
   pl$
     scan_csv(
@@ -419,30 +420,20 @@ query <- function(x) {
             x$str$to_datetime(
               format = "%d-%b-%Y %H:%M",
               time_zone = "UTC",
-              #ambiguous = "earliest",
               strict = FALSE
             ),
             x$str$to_datetime(
               format = "%Y/%m/%d %H:%M:%S",
               time_zone = "UTC",
-              #ambiguous = "earliest",
               strict = FALSE
             )
-          )
-        ),
-      pl$
-        col("^.*appointed$")$
-        map_batches(
-          \(x)
-          x$str$to_date(
-            format = "%Y/%m/%d",
-            strict = FALSE
           )
         )
     )
 }
 
 #' Melt the officer information, pivot by role, and rejoin
+#' @export
 melt <- function(q) {
   q$
     select(
@@ -470,6 +461,20 @@ melt <- function(q) {
         )$
         rename(
           role = "field_0"
+        )$
+        with_columns(
+          pl$
+            col("^.*appointed$")$
+            map_batches(
+              \(x)
+              x$str$to_date(
+                format = "%Y/%m/%d",
+                strict = FALSE
+              )
+            ),
+          pl$
+            col("yob")$
+            cast(pl$dtypes$Int32)
         )$
         lazy(),
       how = "left",

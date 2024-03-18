@@ -1,5 +1,7 @@
 '.__module__.'
 
+box::use(polars[pl])
+
 #' Source of data
 #' @export
 source <- function() {
@@ -7,209 +9,134 @@ source <- function() {
 
   hash(
     p058155 = 0,
-    p596580 = c(2, 4)
+    p540798 = 0,
+    p596580 = 1:4
   )
 }
 
-#' Define key
+#' Define the schema
 #' @export
+get_schema <- function() {
+  list(
+    # p058155
+    `First Name` = "character",
+    `Middle Initital` = "character",
+    `Last Name` = "character",
+    `Appointed Date` = "character",
+    `D.O.B.` = "integer",
+    `Race` = "character",
+    `Gender` = "character",
+    # p540798
+    `FIRST NAME` = "character",
+    `MIDDLE INITIAL` = "character",
+    `LAST NAME` = "character",
+    `APPOINTED DATE` = "character",
+    `YEAR OF BIRTH` = "integer",
+    `RACE` = "character",
+    `SEX` = "character",
+    # p596580
+    `FIRST_NME` = "character",
+    `MIDDLE_INITIAL` = "character",
+    `LAST_NME` = "character",
+    `APPOINTED_DATE` = "character",
+    `YOB` = "integer",
+    `RACE_DESCR` = "character",
+    `SEX_CODE_CD` = "character"
+  )
+}
+
+#' Alias for column names
+alias <- function(reference) {
+  list(
+    # p058155
+    first_name = "First Name",
+    middle_initial = "Middle Initital",
+    last_name = "Last Name",
+    appointed = "Appointed Date",
+    yob = "D.O.B.",
+    race = "Race",
+    gender = "Gender",
+    # p540798
+    first_name = "FIRST NAME",
+    middle_initial = "MIDDLE INITIAL",
+    last_name = "LAST NAME",
+    appointed = "APPOINTED DATE",
+    yob = "YEAR OF BIRTH",
+    race = "RACE",
+    gender = "SEX",
+    # p596580
+    first_name = "FIRST_NME",
+    middle_initial = "MIDDLE_INITIAL",
+    last_name = "LAST_NME",
+    appointed = "APPOINTED_DATE",
+    yob = "YOB",
+    race = "RACE_DESCR",
+    gender = "SEX_CODE_CD"
+  )
+}
+
+#' Key columns
 key <- function() {
-  c("first_name",
+  c("last_name",
+    "first_name",
     "middle_initial",
-    "last_name",
     "appointed",
     "yob",
     "race",
     "gender")
 }
 
-#' Define the schema
-#' @export
-get_schema <- function(reference = "p596580", sheet) {
-
-  box::use(
-    arrow[schema, string],
-    cli[cli_abort]
-  )
-
-  schema_A <- schema(
-    last_name = string(),
-    first_name = string(),
-    middle_initial = string(),
-    gender = string(),
-    race = string(),
-    yob = double(),
-    age = string(),
-    sworn = string(),
-    appointed = string(),
-    position = string(),
-    position_description = string(),
-    unit = string(),
-    unit_description = string(),
-    resigned = string(),
-    star1 = string(),
-    star2 = string(),
-    star3 = string(),
-    star4 = string(),
-    star5 = string(),
-    star6 = string(),
-    star7 = string(),
-    star8 = string(),
-    star9 = string(),
-    star10 = string(),
-    star11 = string()
-  )
-
-  schema_B <- schema(
-    first_name = string(),
-    middle_initial = string(),
-    last_name = string(),
-    appointed = string(),
-    yob = double(),
-    race = string(),
-    gender = string(),
-    resigned = string(),
-    title = string(),
-    description = string(),
-    title_next = string(),
-    description_next = string(),
-    title_effective = string(),
-    title_start = string(),
-    unit = string(),
-    unit_detail = string(),
-    unit_next = string(),
-    unit_start = string(),
-    unit_end = string(),
-    unit_next_detail = string(),
-    unit_next_detail_start = string(),
-    unit_next_detail_end = string(),
-    star = string(),
-    star_next = string(),
-    star_start = string(),
-    star_end = string()
-  )
-
-  schema_C <- schema(
-    first_name = string(),
-    middle_initial = string(),
-    last_name = string(),
-    appointed = string(),
-    yob = double(),
-    race = string(),
-    gender = string(),
-    star = string(),
-    star_start = string(),
-    star_end = string(),
-    type = string()
-  )
-
-  schm <- list(
-    p058155_0 = schema_A,
-    p596580_2 = schema_B,
-    p596580_4 = schema_C
-  )
-
-  if (missing(reference)) {
-    schm
-  } else {
-    if (missing(sheet)) {
-      cli_abort("Specify a sheet, e.g. `sheet = 0`")
-    }
-    schm[[paste(reference, sheet, sep = "_")]]
-  }
-
-}
-
 #' Read the data, apply schema, and wrangle
 #' @export
-build <- function(p058155, p596580_4, p596580_2) {
+build <- function(p058155, p540798, p596580) {
 
-  box::use(
-    arrow[read_csv_arrow],
-    dplyr[across, bind_rows, distinct, filter, left_join,
-          mutate, select, starts_with],
-    polars[pl],
-    tidyr[pivot_longer],
-    rlang[syms],
-    proc/utility[get_reference, get_sheet, parse_dt]
-  )
-
-  l <-
-    lapply(
-      list("p058155"   = p058155,
-           "p596580_2" = p596580_2,
-           "p596580_4" = p596580_4),
-      function(x)
-        read_csv_arrow(
-          file = x,
-          schema = get_schema(
-            reference = get_reference(x),
-            sheet = get_sheet(x)
-          ),
-          na = c("", " "),
-          skip = 1
+  pl$
+    concat(
+      lapply(
+        list(
+          p058155,
+          p540798,
+          p596580
+        ),
+        \(x)
+        pl$
+          scan_csv(
+            x,
+            dtypes = get_schema(),
+            try_parse_dates = FALSE
+          )$
+          rename(
+            intersect(alias(), pl$scan_csv(x)$columns)
+          )$
+          select(
+            key()
+          )
+      ),
+      how = "vertical"
+    )$
+    with_columns(
+      pl$coalesce(
+        pl$
+          col("appointed")$
+          str$to_date(format = "%Y/%m/%d", strict = FALSE),
+        pl$
+          col("appointed")$
+          str$to_date(format = "%m/%d/%y", strict = FALSE)
+      )
+    )$
+    # century correction for dates
+    with_columns(
+      pl$
+        when(
+          pl$col("appointed")$gt(as.Date("2022-12-31"))
+        )$
+        then(
+          pl$col("appointed")$dt$offset_by("-100y")
+        )$
+        otherwise(
+          pl$col("appointed")
         )
-    )
-
-  p058155 <-
-    l[["p058155"]] |>
-    pivot_longer(
-      cols = starts_with("star"),
-      names_to = NULL,
-      values_to = "star"
-    ) |>
-    mutate(
-      across(
-        c(appointed,
-          resigned),
-        function(x)
-          parse_dt(x, format = c("%Y/%m/%d")))
-    )
-
-  p596580_4 <-
-    l[["p596580_4"]] |>
-    mutate(
-      across(
-        c(appointed,
-          star_start,
-          star_end),
-        function(x)
-          parse_dt(x, format = "%Y/%m/%d")
-      )
-    )
-
-  p596580_2 <-
-    l[["p596580_2"]] |>
-    select(
-      !!!syms(key()),
-      resigned
-    ) |>
-    mutate(
-      across(
-        c(appointed,
-          resigned),
-        function(x)
-          parse_dt(x, format = "%Y/%m/%d")
-      )
-    ) |>
-    filter(
-      !is.na(resigned)
-    )
-
-  left_join(
-    p596580_2,
-    p596580_4,
-    by = key(),
-    relationship = "many-to-many"
-  ) |>
-    bind_rows(
-      p058155
-    ) |>
-    distinct(
-      !!!syms(key()),
-      resigned,
-      star
-    ) |>
-    pl$DataFrame()
-
+    )$
+    unique()
 }
+
