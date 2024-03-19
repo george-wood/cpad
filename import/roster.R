@@ -126,14 +126,15 @@ build <- function() {
       how = "vertical"
     )$
     with_columns(
-      pl$coalesce(
-        pl$
-          col("appointed")$
-          str$to_date(format = "%Y/%m/%d", strict = FALSE),
-        pl$
-          col("appointed")$
-          str$to_date(format = "%m/%d/%y", strict = FALSE)
-      )
+      pl$
+        coalesce(
+          pl$
+            col("appointed")$
+            str$to_date(format = "%m/%d/%y", strict = FALSE),
+          pl$
+            col("appointed")$
+            str$to_date(format = "%Y/%m/%d", strict = FALSE)
+        )
     )$
     # century correction for dates
     with_columns(

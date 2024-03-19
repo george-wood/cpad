@@ -30,8 +30,8 @@ get_schema <- function() {
     CPD_UNIT_NO = "character",
     UNIT_NAME = "character",
     RADIO_ZONE = "character",
-    START_DATE = "character", # timestamp
-    END_DATE = "character" # timestamp
+    START_DATE = "character",
+    END_DATE = "character"
   )
 }
 

@@ -31,14 +31,14 @@ contact$
   collect()$
   write_parquet("db/contact.parquet")
 
-military$
-  build()$
-  sink_parquet("db/military.parquet")
-
 force$
   build()$
   collect()$
   write_parquet("db/force.parquet")
+
+military$
+  build()$
+  sink_parquet("db/military.parquet")
 
 roster$
   build()$
