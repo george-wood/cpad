@@ -54,7 +54,7 @@ build <- function() {
   pl$
     scan_csv(
       path()$p621077,
-      dtype = get_schema(),
+      dtypes = get_schema(),
       try_parse_dates = FALSE
     )$
     rename(
