@@ -422,21 +422,18 @@ query <- function() {
     )$
     with_columns(
       pl$
-        col("^.*dt$")$
-        map_batches(
-          \(x)
-          pl$coalesce(
-            x$str$to_datetime(
-              format = "%d-%b-%Y %H:%M",
-              time_zone = "UTC",
-              strict = FALSE
-            ),
-            x$str$to_datetime(
-              format = "%Y/%m/%d %H:%M:%S",
-              time_zone = "UTC",
-              strict = FALSE
-            )
-          )
+        col("dt")$
+        str$to_datetime(
+          format = "%d-%b-%Y %H:%M",
+          time_zone = "UTC",
+          strict = FALSE
+        ),
+      pl$
+        col("^.*_dt$")$
+        str$to_datetime(
+          format = "%Y/%m/%d %H:%M:%S",
+          time_zone = "UTC",
+          strict = FALSE
         )
     )
 }
@@ -474,12 +471,9 @@ melt <- function(q) {
         with_columns(
           pl$
             col("^.*appointed$")$
-            map_batches(
-              \(x)
-              x$str$to_date(
-                format = "%Y/%m/%d",
-                strict = FALSE
-              )
+            str$to_date(
+              format = "%Y/%m/%d",
+              strict = FALSE
             ),
           pl$
             col("yob")$
@@ -496,3 +490,4 @@ melt <- function(q) {
 build <- function(p646845) {
   melt(query())
 }
+
