@@ -2,18 +2,17 @@
 
 box::use(polars[pl])
 
-#' List files in a directory with regex option
+#' Compute proportion of column in dataframe with missing data
 #' @export
-proportion_missing <- function(path) {
+missing <- function(path, col = "uid") {
   pl$
     scan_parquet(path)$
     group_by("year")$
     agg(
       pl$len()$cast(pl$dtypes$Float32)$alias("n"),
-      pl$col("uid")$is_null()$sum()$alias("missing")
+      pl$col(col)$is_null()$sum()$alias("missing")
     )$
     with_columns(
       pl$col("missing")$div(pl$col("n"))$mul(100)
     )
 }
-
