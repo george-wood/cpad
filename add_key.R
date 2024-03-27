@@ -7,6 +7,7 @@ box::use(
 
 box::reload(key)
 
+#' TODO create function in join module for below operation
 arrest <-
   pl$
   scan_parquet("db/arrest.parquet")$
@@ -18,56 +19,16 @@ arrest <-
   )$
   collect()
 
-z <-
-  arrest$
-  filter(
-    pl$col("last_name")$eq("RUIZ") &
-      pl$col("first_name")$eq("ROLANDO")
-  )$
-  select(
-    key$key(),
-    "uid"
-  )$
-  unique()
-
-
-xx <- pl$DataFrame(
-  first_name = "ROLANDO",
-  middle_initial = NA_character_,
-  last_name = "RUIZ"
-)
-
-yy <- pl$DataFrame(
-  first_name = "ROLANDO",
-  middle_initial = NA_character_,
-  last_name = "RUIZ",
-  uid = "1"
-)
-
-xx
-yy
-
-xx$join(yy,
-        on = c("first_name", "middle_initial", "last_name"),
-        how = "inner",
-        join_nulls = TRUE)
-
-dplyr::left_join(xx$to_data_frame(), yy$to_data_frame(),
-                 by = c("first_name", "middle_initial", "last_name"))
-
-the_key <-
-  key$
-  officers()$
-  filter(
-    pl$col("last_name")$eq("RUIZ") &
-      pl$col("first_name")$eq("ROLANDO")
+#' TODO run join operation on all imported data
+pl$
+  scan_parquet("db/arrest.parquet")$
+  join(
+    other = key$officers(),
+    on = key$key(),
+    how = "left",
+    join_nulls = TRUE
   )$
   collect()$
-  to_data_frame()
+  write_parquet("db/arrest_keyed.parquet")
 
-
-z$to_data_frame()
-the_key
-
-z$join(other = key$officers()$collect(), on = key$key(), how = "left")
 
