@@ -7,7 +7,7 @@ box::use(
 
 #' Key columns
 #' @export
-key <- function() {
+standard_key <- function() {
   c("first_name",
     "middle_initial",
     "last_name",
@@ -16,11 +16,11 @@ key <- function() {
 }
 
 #' Locate data frames with all key columns
-locate_keys <- function() {
+locate_key <- function() {
   sapply(
     dir_ls("db"),
     function(x)
-      all(key() %in% pl$scan_parquet(x)$columns)
+      all(standard_key() %in% pl$scan_parquet(x)$columns)
   )
 }
 
@@ -30,17 +30,17 @@ officers <- function() {
   pl$
     concat(
       lapply(
-        dir_ls("db")[locate_keys()],
+        dir_ls("db")[locate_key()],
         \(x)
         pl$
           scan_parquet(x)$
-          select(key())$
+          select(standard_key())$
           unique()
       ),
       how = "vertical"
     )$
     drop_nulls(
-      subset = setdiff(key(), c("middle_initial"))
+      subset = setdiff(standard_key(), c("middle_initial"))
     )$
     sort(
       "appointed",
@@ -54,3 +54,21 @@ officers <- function() {
       pl$col("uid")$cast(pl$Utf8)$str$zfill(5)
     )
 }
+
+#' join UID to other data
+#' @export
+join <- function(db, key) {
+  if (missing(key)) {
+    key <- standard_key()
+  }
+
+  pl$
+    scan_parquet(db)$
+    join(
+      other = officers(),
+      on = key,
+      how = "left",
+      join_nulls = TRUE
+    )
+}
+
