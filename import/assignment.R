@@ -146,7 +146,8 @@ build <- function() {
       "aid"
     )$
     with_columns(
-      pl$col("aid")$cast(pl$Utf8)$str$zfill(8)
+      pl$col("aid")$cast(pl$Utf8)$str$zfill(8),
+      pl$col("date")$sub(pl$col("appointed"))$alias("tenure")
     )$
     sort(
       c("dt_start", "dt_end")
