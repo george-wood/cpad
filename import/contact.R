@@ -177,14 +177,13 @@ melt <- function(q) {
       on = "uid_contact"
     )$
     with_columns(
-      pl$col("age")$cast(pl$Int32)
-    )$
-    with_columns(
       pl$col("dt")$dt$year()$
-        sub(pl$col("age"))$
+        sub(pl$col("age")$cast(pl$Int32))$
         sub(1)$
+        cast(pl$Int32)$
         alias("yob_lower")
-    )
+    )$
+    drop("age")
 }
 
 #' Wrapper to scan the data, apply schema, and wrangle

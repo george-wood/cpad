@@ -105,5 +105,6 @@ build <- function() {
           format = "%d-%b-%y",
           strict = FALSE
         )
-    )
+    )$
+    unique()
 }

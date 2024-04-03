@@ -219,6 +219,7 @@ build <- function() {
       pl$col("dt")$dt$year()$
         sub(pl$col("age"))$
         sub(1)$
+        cast(pl$Int32)$
         alias("yob_lower")
     )$
     drop(

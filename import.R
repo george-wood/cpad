@@ -52,5 +52,3 @@ stop$
 warrant$
   build()$
   sink_parquet("db/warrant.parquet")
-
-
