@@ -2,73 +2,82 @@
 
 box::use(
   polars[pl],
-  fs[dir_ls]
+  testthat[expect_equal],
+  proc/officer
 )
-
-#' Key columns
-#' @export
-standard_key <- function() {
-  c("first_name",
-    "middle_initial",
-    "last_name",
-    "appointed",
-    "yob")
-}
-
-#' Locate data frames with all key columns
-locate_key <- function() {
-  sapply(
-    dir_ls("db"),
-    function(x)
-      all(standard_key() %in% pl$scan_parquet(x)$columns)
-  )
-}
-
-#' Concatenate located data frames and return officers with UID
-#' @export
-officers <- function() {
-  pl$
-    concat(
-      lapply(
-        dir_ls("db")[locate_key()],
-        \(x)
-        pl$
-          scan_parquet(x)$
-          select(standard_key())$
-          unique()
-      ),
-      how = "vertical"
-    )$
-    drop_nulls(
-      subset = setdiff(standard_key(), c("middle_initial"))
-    )$
-    sort(
-      "appointed",
-      "yob"
-    )$
-    unique()$
-    with_row_index(
-      "uid"
-    )$
-    with_columns(
-      pl$col("uid")$cast(pl$Utf8)$str$zfill(5)
-    )
-}
 
 #' join UID to other data
 #' @export
-join <- function(db, key) {
-  if (missing(key)) {
-    key <- standard_key()
+join <- function(db, on, validate = TRUE) {
+  if (missing(on)) {
+    on <- officer$key()
   }
 
-  pl$
+  # take first row when key does not uniquely identify an officer
+  keyed <-
+    pl$
+    read_parquet("private/officer.parquet")$
+    group_by(on)$
+    first()$
+    lazy()
+
+  res <-
+    pl$
     scan_parquet(db)$
     join(
-      other = officers(),
-      on = key,
+      other = keyed,
+      on = on,
       how = "left",
       join_nulls = TRUE
+    )$
+    drop(
+      intersect(
+        unique(c(on, officer$key())),
+        unique(c(pl$scan_parquet(db)$columns, keyed$columns))
+      )
     )
+
+  if (validate) {
+    expect_equal(
+      pl$scan_parquet(db)$select(pl$len())$collect()$item(),
+      res$select(pl$len())$collect()$item()
+    )
+  }
+
+  res
+}
+
+#' join UID to other data using asof join
+#' @export
+join_asof <- function(db, validate = TRUE, tolerance = NULL,
+                      left_on = "yob_lower", right_on = "yob", ..., by) {
+
+  res <-
+    pl$
+    scan_parquet(db)$
+    join_asof(
+      other = pl$
+        scan_parquet("private/officer.parquet")$
+        select("uid", by, right_on)$
+        unique(),
+      left_on = left_on,
+      right_on = right_on,
+      strategy = "forward",
+      tolerance = tolerance,
+      by = by,
+      how = "left",
+      allow_parallel = TRUE,
+      force_parallel = FALSE
+    )$
+    drop(by, left_on, right_on)
+
+  if (validate) {
+    expect_equal(
+      pl$scan_parquet(db)$select(pl$len())$collect()$item(),
+      res$select(pl$len())$collect()$item()
+    )
+  }
+
+  res
 }
 
