@@ -216,10 +216,20 @@ build <- function() {
         str$to_datetime(format = "%Y-%m-%dT%H:%M:%S", strict = FALSE)
     )$
     with_columns(
-      pl$col("dt")$dt$year()$
-        sub(pl$col("age"))$
-        sub(1)$
-        cast(pl$Int32)$
+      pl$
+        when(
+          pl$col("yob")$is_null()
+        )$
+        then(
+          pl$
+            col("dt")$dt$year()$
+            sub(pl$col("age")$cast(pl$Int32))$
+            sub(1)$
+            cast(pl$Int32)
+        )$
+        otherwise(
+          pl$col("yob")
+        )$
         alias("yob_lower")
     )$
     drop(
