@@ -102,6 +102,9 @@ build <- function() {
       pl$
         col("star")$
         str$replace("^0+", "")
+    )$
+    filter(
+      pl$col("dt")$is_not_null()
     )
 }
 

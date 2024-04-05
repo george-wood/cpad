@@ -257,5 +257,8 @@ build <- function() {
         unique(),
       on = "uid_force",
       how = "left"
+    )$
+    filter(
+      pl$col("dt")$is_not_null()
     )
 }

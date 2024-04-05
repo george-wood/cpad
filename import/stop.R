@@ -488,6 +488,11 @@ melt <- function(q) {
 #' Wrapper to scan the data, apply schema, and wrangle
 #' @export
 build <- function(p646845) {
-  melt(query())
+  melt(
+    query()
+  )$
+    filter(
+      pl$col("dt")$is_not_null()
+    )
 }
 

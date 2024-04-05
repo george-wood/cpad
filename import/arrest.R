@@ -142,6 +142,9 @@ build <- function() {
           format = "%Y-%m-%d",
           strict = FALSE
         )
+    )$
+    filter(
+      pl$col("dt")$is_not_null()
     )
 }
 
