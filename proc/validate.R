@@ -2,17 +2,18 @@
 
 box::use(polars[pl])
 
-#' Compute proportion of column in dataframe with missing data
+#' Compute proportion of null values for a column in a dataframe
 #' @export
-missing <- function(path, col = "uid") {
+null_count <- function(db, col = "uid") {
   pl$
-    scan_parquet(path)$
-    group_by("year")$
-    agg(
+    scan_parquet(db)$
+    select(
       pl$len()$cast(pl$dtypes$Float32)$alias("n"),
       pl$col(col)$is_null()$sum()$alias("missing")
     )$
     with_columns(
-      pl$col("missing")$div(pl$col("n"))$mul(100)
-    )
+      pl$col("missing")$div(pl$col("n"))$mul(100)$alias("percent")
+    )$
+    collect()
 }
+

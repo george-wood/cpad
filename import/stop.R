@@ -425,14 +425,12 @@ query <- function() {
         col("dt")$
         str$to_datetime(
           format = "%d-%b-%Y %H:%M",
-          time_zone = "UTC",
           strict = FALSE
         ),
       pl$
         col("^.*_dt$")$
         str$to_datetime(
           format = "%Y/%m/%d %H:%M:%S",
-          time_zone = "UTC",
           strict = FALSE
         )
     )

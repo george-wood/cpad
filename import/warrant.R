@@ -106,8 +106,5 @@ build <- function() {
           strict = FALSE
         )
     )$
-    unique()$
-    filter(
-      pl$col("dt")$is_not_null()
-    )
+    unique()
 }

@@ -6,7 +6,7 @@ box::use(
   proc/officer
 )
 
-#' join UID to other data
+#' Join UID to other data
 #' @export
 join <- function(db, on, validate = TRUE) {
   if (missing(on)) {
@@ -47,19 +47,22 @@ join <- function(db, on, validate = TRUE) {
   res
 }
 
-#' join UID to other data using asof join
+#' Join UID to other data using asof join
 #' @export
 join_asof <- function(db, validate = TRUE, tolerance = NULL,
                       left_on = "yob_lower", right_on = "yob", ..., by) {
 
+  #' Both DataFrames must be sorted by the join_asof key
   res <-
     pl$
     scan_parquet(db)$
+    sort(left_on)$
     join_asof(
       other = pl$
         scan_parquet("private/officer.parquet")$
         select("uid", by, right_on)$
-        unique(),
+        unique()$
+        sort(right_on),
       left_on = left_on,
       right_on = right_on,
       strategy = "forward",
@@ -69,7 +72,7 @@ join_asof <- function(db, validate = TRUE, tolerance = NULL,
       allow_parallel = TRUE,
       force_parallel = FALSE
     )$
-    drop(by, left_on, right_on)
+    drop(by, left_on, right_on, "^.*_right$")
 
   if (validate) {
     expect_equal(
@@ -80,4 +83,5 @@ join_asof <- function(db, validate = TRUE, tolerance = NULL,
 
   res
 }
+
 

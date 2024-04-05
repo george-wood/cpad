@@ -6,7 +6,8 @@ box::use(
   purrr[pmap_vec],
   cli[cli_alert_success],
   proc/officer,
-  proc/uid
+  proc/uid,
+  proc/validate
 )
 
 #' Helpers
@@ -21,12 +22,16 @@ join_asof_and_write <- function(db, by) {
 }
 
 #' Generate officers
+if (file.exists("private/officer.parquet")) {
+  warning("Officer data exists. Run all joins to ensure veracity.")
+}
+
 officer$
   generate_key()$
   collect()$
   write_parquet("private/officer.parquet")
 
-#' Join specification
+#' Join specifications
 spec <-
   tribble(
     ~db,                     ~on,
@@ -47,3 +52,7 @@ spec_asof <-
 #' Join UID to imported data
 pmap_vec(spec, join_and_write)
 pmap_vec(spec_asof, join_asof_and_write)
+
+#' Check proportion missing
+sapply(c(spec$db, spec_asof$db), validate$null_count)
+
