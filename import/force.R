@@ -49,7 +49,7 @@ get_schema <- function() {
     NOTIFY_DIST_SERGEANT = "character",
     NOTIFY_OP_COMMAND = "character",
     NOTIFY_DET_DIV = "character",
-    NUMBER_OF_WEAPONS_DISCHARGED = "character",
+    NUMBER_OF_WEAPONS_DISCHARGED = "integer",
     PARTY_FIRED_FIRST = "character",
     POLAST = "character",
     POFIRST = "character",

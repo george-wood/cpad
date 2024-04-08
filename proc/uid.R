@@ -32,7 +32,7 @@ join <- function(db, on, validate = TRUE) {
     )$
     drop(
       intersect(
-        unique(c(on, officer$key())),
+        setdiff(unique(c(on, officer$key())), "appointed"),
         unique(c(pl$scan_parquet(db)$columns, keyed$columns))
       )
     )
@@ -72,7 +72,9 @@ join_asof <- function(db, validate = TRUE, tolerance = NULL,
       allow_parallel = TRUE,
       force_parallel = FALSE
     )$
-    drop(by, left_on, right_on, "^.*_right$")
+    drop(
+      setdiff(by, "appointed"), left_on, right_on, "^.*_right$"
+    )
 
   if (validate) {
     expect_equal(
