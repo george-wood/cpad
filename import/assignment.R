@@ -1,15 +1,15 @@
 '.__module__.'
 
-box::use(polars[pl])
+box::use(
+  polars[pl],
+  hash[hash],
+  glue[glue],
+  proc/utility[scan_aliased, ls]
+)
 
 #' Source of data
 #' @export
 source <- function() {
-  box::use(
-    hash[hash],
-    glue[glue]
-  )
-
   hash(
     p602033 = c(
       glue("2014_{0:3}"),
@@ -25,8 +25,6 @@ source <- function() {
 
 #' Path to data
 path <- function() {
-  box::use(../proc/utility[ls])
-
   list(
     p602033 = ls("assignment/p602033")
   )
@@ -36,71 +34,63 @@ path <- function() {
 #' @export
 get_schema <- function() {
   list(
-    AA_DATE = "character",
-    UNIT = "character",
-    WATCH = "character",
-    BEAT = "character",
-    CAR_VEHICLE_NUMER = "character",
-    START_TIME = "character",
-    END_TIME = "character",
-    LAST_NME = "character",
-    FIRST_NME = "character",
-    MIDDLE_INITIAL = "character",
-    RANK = "character",
-    STAR_NO = "character",
-    GENDER = "character",
-    RACE = "character",
-    YEAR_OF_BIRTH = "integer",
-    APPOINTMENT_DATE = "character",
-    PRESENT_FOR_DUTY = "character",
-    ABSENCE_CD = "character",
-    ABSENCE_DESCR = "character",
-    MODIFIED_BY_LAST = "character",
-    MODIFIED_BY_FIRST = "character",
-    MODIFIED_DATE = "character"
+    AA_DATE = pl$String,
+    UNIT = pl$String,
+    WATCH = pl$String,
+    BEAT = pl$String,
+    CAR_VEHICLE_NUMER = pl$String,
+    START_TIME = pl$String,
+    END_TIME = pl$String,
+    LAST_NME = pl$String,
+    FIRST_NME = pl$String,
+    MIDDLE_INITIAL = pl$String,
+    RANK = pl$String,
+    STAR_NO = pl$String,
+    GENDER = pl$String,
+    RACE = pl$String,
+    YEAR_OF_BIRTH = pl$Int32,
+    APPOINTMENT_DATE = pl$String,
+    PRESENT_FOR_DUTY = pl$String,
+    ABSENCE_CD = pl$String,
+    ABSENCE_DESCR = pl$String,
+    MODIFIED_BY_LAST = pl$String,
+    MODIFIED_BY_FIRST = pl$String,
+    MODIFIED_DATE = pl$String
   )
 }
 
 #' Alias for column names
 alias <- function() {
   list(
-    date = "AA_DATE",
-    unit = "UNIT",
-    watch = "WATCH",
-    beat = "BEAT",
-    vehicle = "CAR_VEHICLE_NUMER",
-    dt_start = "START_TIME",
-    dt_end = "END_TIME",
-    last_name = "LAST_NME",
-    first_name = "FIRST_NME",
-    middle_initial = "MIDDLE_INITIAL",
-    rank = "RANK",
-    star = "STAR_NO",
-    gender = "GENDER",
-    race = "RACE",
-    yob = "YEAR_OF_BIRTH",
-    appointed = "APPOINTMENT_DATE",
-    present_for_duty = "PRESENT_FOR_DUTY",
-    absence_code = "ABSENCE_CD",
-    absence_description = "ABSENCE_DESCR",
-    modified_by_last = "MODIFIED_BY_LAST",
-    modified_by_first = "MODIFIED_BY_FIRST",
-    modified_date = "MODIFIED_DATE"
+    AA_DATE = "date",
+    UNIT = "unit",
+    WATCH = "watch",
+    BEAT = "beat",
+    CAR_VEHICLE_NUMER = "vehicle",
+    START_TIME = "dt_start",
+    END_TIME = "dt_end",
+    LAST_NME = "last_name",
+    FIRST_NME = "first_name",
+    MIDDLE_INITIAL = "middle_initial",
+    RANK = "rank",
+    STAR_NO = "star",
+    GENDER = "gender",
+    RACE = "race",
+    YEAR_OF_BIRTH = "yob",
+    APPOINTMENT_DATE = "appointed",
+    PRESENT_FOR_DUTY = "present_for_duty",
+    ABSENCE_CD = "absence_code",
+    ABSENCE_DESCR = "absence_description",
+    MODIFIED_BY_LAST = "modified_by_last",
+    MODIFIED_BY_FIRST = "modified_by_first",
+    MODIFIED_DATE = "modified_date"
   )
 }
 
 #' Scan csv with schema, wrangle, and create identifier
 #' @export
 build <- function() {
-  pl$
-    scan_csv(
-      path()$p602033,
-      dtypes = get_schema(),
-      try_parse_dates = FALSE
-    )$
-    rename(
-      alias()
-    )$
+  scan_aliased(path()$p602033, get_schema(), alias())$
     with_columns(
       pl$
         col("appointed")$
@@ -136,23 +126,23 @@ build <- function() {
           pl$col("dt_end")
         )
     )$
-    group_by(
-      pl$all()$exclude("^modified.*$")
-    )$
-    agg(
-      pl$all()$sort_by("modified_date")$last()
-    )$
     drop(
-      "^modified_.*$"
+      pl$col("^modified_.*$")
     )$
+    unique()$
     sort(
-      c("dt_start", "dt_end")
+      c("dt_start", "dt_end",
+        "date", "star", "unit", "watch", "beat",
+        "absence_code", "last_name", "first_name", "middle_initial",
+        "vehicle", "rank", "gender", "race", "yob", "appointed",
+        "present_for_duty", "absence_description"),
+      nulls_last = TRUE
     )$
     with_row_index(
       "aid"
     )$
     with_columns(
-      pl$col("aid")$cast(pl$Utf8)$str$zfill(8),
+      pl$col("aid")$cast(pl$String)$str$zfill(8),
       pl$col("date")$sub(pl$col("appointed"))$dt$total_days()$alias("tenure")
     )
 }

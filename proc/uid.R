@@ -8,7 +8,8 @@ box::use(
 
 #' Join UID to other data
 #' @export
-join <- function(db, on, validate = TRUE) {
+join <- function(db, on, validate = TRUE,
+                 officer_path = "private/officer.parquet") {
   if (missing(on)) {
     on <- officer$key()
   }
@@ -16,10 +17,14 @@ join <- function(db, on, validate = TRUE) {
   # take first row when key does not uniquely identify an officer
   keyed <-
     pl$
-    read_parquet("private/officer.parquet")$
-    group_by(on)$
-    first()$
+    read_parquet(officer_path)$
+    unique(!!!on, keep = "first", maintain_order = TRUE)$
     lazy()
+
+  drop_cols <- intersect(
+    setdiff(unique(c(on, officer$key())), "appointed"),
+    unique(c(names(pl$scan_parquet(db)), names(keyed)))
+  )
 
   res <-
     pl$
@@ -28,19 +33,14 @@ join <- function(db, on, validate = TRUE) {
       other = keyed,
       on = on,
       how = "left",
-      join_nulls = TRUE
+      nulls_equal = TRUE
     )$
-    drop(
-      intersect(
-        setdiff(unique(c(on, officer$key())), "appointed"),
-        unique(c(pl$scan_parquet(db)$columns, keyed$columns))
-      )
-    )
+    drop(!!!drop_cols)
 
   if (validate) {
     expect_equal(
-      pl$scan_parquet(db)$select(pl$len())$collect()$item(),
-      res$select(pl$len())$collect()$item()
+      as.data.frame(pl$scan_parquet(db)$select(pl$len())$collect())[[1]],
+      as.data.frame(res$select(pl$len())$collect())[[1]]
     )
   }
 
@@ -50,7 +50,10 @@ join <- function(db, on, validate = TRUE) {
 #' Join UID to other data using asof join
 #' @export
 join_asof <- function(db, validate = TRUE, tolerance = NULL,
-                      left_on = "yob_lower", right_on = "yob", ..., by) {
+                      left_on = "yob_lower", right_on = "yob", ..., by,
+                      officer_path = "private/officer.parquet") {
+
+  drop_cols <- c(setdiff(by, "appointed"), left_on, right_on)
 
   #' Both DataFrames must be sorted by the join_asof key
   res <-
@@ -59,31 +62,24 @@ join_asof <- function(db, validate = TRUE, tolerance = NULL,
     sort(left_on)$
     join_asof(
       other = pl$
-        scan_parquet("private/officer.parquet")$
-        select("uid", by, right_on)$
+        scan_parquet(officer_path)$
+        select("uid", !!!by, right_on)$
         unique()$
         sort(right_on),
       left_on = left_on,
       right_on = right_on,
       strategy = "forward",
       tolerance = tolerance,
-      by = by,
-      how = "left",
-      allow_parallel = TRUE,
-      force_parallel = FALSE
+      by = by
     )$
-    drop(
-      setdiff(by, "appointed"), left_on, right_on, "^.*_right$"
-    )
+    drop(!!!drop_cols, pl$col("^.*_right$"))
 
   if (validate) {
     expect_equal(
-      pl$scan_parquet(db)$select(pl$len())$collect()$item(),
-      res$select(pl$len())$collect()$item()
+      as.data.frame(pl$scan_parquet(db)$select(pl$len())$collect())[[1]],
+      as.data.frame(res$select(pl$len())$collect())[[1]]
     )
   }
 
   res
 }
-
-

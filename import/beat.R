@@ -1,12 +1,14 @@
 '.__module__.'
 
-box::use(polars[pl])
+box::use(
+  polars[pl],
+  hash[hash],
+  proc/utility[scan_aliased, ls]
+)
 
 #' Source of data
 #' @export
 source <- function() {
-  box::use(hash[hash])
-
   hash(
     p621077 = 1
   )
@@ -14,8 +16,6 @@ source <- function() {
 
 #' Path to data
 path <- function() {
-  box::use(../proc/utility[ls])
-
   list(
     p621077 = ls("beat/p621077", reg = "_1")
   )
@@ -25,41 +25,33 @@ path <- function() {
 #' @export
 get_schema <- function() {
   list(
-    BEAT = "character",
-    DESCR = "character",
-    CPD_UNIT_NO = "character",
-    UNIT_NAME = "character",
-    RADIO_ZONE = "character",
-    START_DATE = "character",
-    END_DATE = "character"
+    BEAT = pl$String,
+    DESCR = pl$String,
+    CPD_UNIT_NO = pl$String,
+    UNIT_NAME = pl$String,
+    RADIO_ZONE = pl$String,
+    START_DATE = pl$String,
+    END_DATE = pl$String
   )
 }
 
 #' Alias for column names
-alias <- function(reference) {
+alias <- function() {
   list(
-    beat = "BEAT",
-    description = "DESCR",
-    unit = "CPD_UNIT_NO",
-    unit_name = "UNIT_NAME",
-    radio_zone = "RADIO_ZONE",
-    dt_start = "START_DATE",
-    dt_end = "END_DATE"
+    BEAT = "beat",
+    DESCR = "description",
+    CPD_UNIT_NO = "unit",
+    UNIT_NAME = "unit_name",
+    RADIO_ZONE = "radio_zone",
+    START_DATE = "dt_start",
+    END_DATE = "dt_end"
   )
 }
 
 #' Read the data, apply schema, and write dataset
 #' @export
 build <- function() {
-  pl$
-    scan_csv(
-      path()$p621077,
-      dtypes = get_schema(),
-      try_parse_dates = FALSE
-    )$
-    rename(
-      alias()
-    )$
+  scan_aliased(path()$p621077, get_schema(), alias())$
     with_columns(
       pl$
         col("dt_start")$

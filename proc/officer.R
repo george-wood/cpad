@@ -1,36 +1,33 @@
 '.__module__.'
 
 box::use(
-  polars[pl],
-  fs[dir_ls]
+  polars[pl]
 )
 
 #' Key columns
 #' @export
 key <- function() {
-  c("first_name",
-    "middle_initial",
-    "last_name",
-    "appointed",
-    "yob")
+  c("first_name", "middle_initial", "last_name", "appointed", "yob")
 }
 
-#' Locate data frames with all key columns
-locate_key <- function() {
-  sapply(
-    dir_ls("db"),
-    function(x)
-      all(key() %in% pl$scan_parquet(x)$columns)
-  )
+#' Filter a vector of parquet paths down to those carrying all key columns.
+locate_key <- function(paths) {
+  paths[vapply(
+    paths,
+    function(x) all(key() %in% names(pl$scan_parquet(x))),
+    logical(1)
+  )]
 }
 
-#' Concatenate located data frames and return officers with UID
+#' Concatenate located data frames and return officers with UID.
+#' `paths` is an explicit vector of parquet file paths to consider; only
+#' those carrying the full set of key columns are included.
 #' @export
-generate_key <- function() {
+generate_key <- function(paths) {
   pl$
     concat(
-      lapply(
-        dir_ls("db")[locate_key()],
+      !!!lapply(
+        locate_key(paths),
         \(x)
         pl$
           scan_parquet(x)$
@@ -40,40 +37,34 @@ generate_key <- function() {
       how = "vertical"
     )$
     drop_nulls(
-      subset = setdiff(key(), c("middle_initial", "yob"))
+      !!!setdiff(key(), c("middle_initial", "yob"))
     )$
-    # fill null yob for otherwise distinct keys
-    with_columns(
+  # fill null yob for otherwise distinct keys
+  with_columns(
       pl$
         col("yob")$
         forward_fill()$
         backward_fill()$
-        over(setdiff(key(), c("middle_initial", "yob")))
+        over(!!!setdiff(key(), c("middle_initial", "yob")))
     )$
-    # store all middle initials for otherwise distinct keys
-    group_by(
-      setdiff(key(), "middle_initial")
-    )$
-    agg(
-      pl$col("middle_initial")$unique()
-    )$
-    unique(
-      setdiff(key(), "middle_initial")
-    )$
-    sort(
-      "appointed",
-      "yob"
-    )$
-    with_row_index(
-      "uid"
-    )$
-    with_columns(
-      pl$col("uid")$cast(pl$Utf8)$str$zfill(5),
-      pl$col("appointed")$dt$year()$cast(pl$Int32)$alias("appointed_year")
-    )$
-    explode(
-      "middle_initial"
-    )
+  # store all middle initials for otherwise distinct keys
+  group_by(
+    !!!setdiff(key(), "middle_initial")
+  )$agg(
+    pl$col("middle_initial")$unique()
+  )$unique(
+    !!!setdiff(key(), "middle_initial")
+  )$sort(
+    "appointed",
+    "yob"
+  )$with_row_index(
+    "uid"
+  )$with_columns(
+    pl$col("uid")$cast(pl$String)$str$zfill(5),
+    pl$col("appointed")$dt$year()$cast(pl$Int32)$alias("appointed_year")
+  )$explode(
+    "middle_initial"
+  )
 }
 
 #' Example without non-null yob and middle_initial steps
@@ -89,7 +80,6 @@ generate_key <- function() {
 # │ 28974 ┆ HERBERT    ┆ I              ┆ BETANCOURT ┆ 1998-10-26 ┆ 1969 │
 # │ 48554 ┆ LYNETTE    ┆ E              ┆ BETANCOURT ┆ 2018-11-27 ┆ 1995 │
 # └───────┴────────────┴────────────────┴────────────┴────────────┴──────┘
-
 
 #' Example of year of birth ambiguity
 # ┌────────────┬────────────────┬───────────┬────────────┬──────┐

@@ -1,12 +1,14 @@
 '.__module__.'
 
-box::use(polars[pl])
+box::use(
+  polars[pl],
+  hash[hash],
+  proc/utility[scan_aliased, ls]
+)
 
 #' Source of data
 #' @export
 source <- function() {
-  box::use(hash[hash])
-
   hash(
     p058155 = 0,
     p540798 = 0,
@@ -16,8 +18,6 @@ source <- function() {
 
 #' Path to data
 path <- function() {
-  box::use(../proc/utility[ls])
-
   list(
     p058155 = ls("roster/p058155"),
     p540798 = ls("roster/p540798"),
@@ -30,29 +30,29 @@ path <- function() {
 get_schema <- function() {
   list(
     # p058155
-    `First Name` = "character",
-    `Middle Initital` = "character",
-    `Last Name` = "character",
-    `Appointed Date` = "character",
-    `D.O.B.` = "integer",
-    `Race` = "character",
-    `Gender` = "character",
+    `First Name` = pl$String,
+    `Middle Initital` = pl$String,
+    `Last Name` = pl$String,
+    `Appointed Date` = pl$String,
+    `D.O.B.` = pl$Int32,
+    `Race` = pl$String,
+    `Gender` = pl$String,
     # p540798
-    `FIRST NAME` = "character",
-    `MIDDLE INITIAL` = "character",
-    `LAST NAME` = "character",
-    `APPOINTED DATE` = "character",
-    `YEAR OF BIRTH` = "integer",
-    `RACE` = "character",
-    `SEX` = "character",
+    `FIRST NAME` = pl$String,
+    `MIDDLE INITIAL` = pl$String,
+    `LAST NAME` = pl$String,
+    `APPOINTED DATE` = pl$String,
+    `YEAR OF BIRTH` = pl$Int32,
+    `RACE` = pl$String,
+    `SEX` = pl$String,
     # p596580
-    `FIRST_NME` = "character",
-    `MIDDLE_INITIAL` = "character",
-    `LAST_NME` = "character",
-    `APPOINTED_DATE` = "character",
-    `YOB` = "integer",
-    `RACE_DESCR` = "character",
-    `SEX_CODE_CD` = "character"
+    `FIRST_NME` = pl$String,
+    `MIDDLE_INITIAL` = pl$String,
+    `LAST_NME` = pl$String,
+    `APPOINTED_DATE` = pl$String,
+    `YOB` = pl$Int32,
+    `RACE_DESCR` = pl$String,
+    `SEX_CODE_CD` = pl$String
   )
 }
 
@@ -60,68 +60,64 @@ get_schema <- function() {
 alias <- function() {
   list(
     # p058155
-    first_name = "First Name",
-    middle_initial = "Middle Initital",
-    last_name = "Last Name",
-    appointed = "Appointed Date",
-    yob = "D.O.B.",
-    race = "Race",
-    gender = "Gender",
+    `First Name` = "first_name",
+    `Middle Initital` = "middle_initial",
+    `Last Name` = "last_name",
+    `Appointed Date` = "appointed",
+    `D.O.B.` = "yob",
+    `Race` = "race",
+    `Gender` = "gender",
     # p540798
-    first_name = "FIRST NAME",
-    middle_initial = "MIDDLE INITIAL",
-    last_name = "LAST NAME",
-    appointed = "APPOINTED DATE",
-    yob = "YEAR OF BIRTH",
-    race = "RACE",
-    gender = "SEX",
+    `FIRST NAME` = "first_name",
+    `MIDDLE INITIAL` = "middle_initial",
+    `LAST NAME` = "last_name",
+    `APPOINTED DATE` = "appointed",
+    `YEAR OF BIRTH` = "yob",
+    `RACE` = "race",
+    `SEX` = "gender",
     # p596580
-    first_name = "FIRST_NME",
-    middle_initial = "MIDDLE_INITIAL",
-    last_name = "LAST_NME",
-    appointed = "APPOINTED_DATE",
-    yob = "YOB",
-    race = "RACE_DESCR",
-    gender = "SEX_CODE_CD"
+    FIRST_NME = "first_name",
+    MIDDLE_INITIAL = "middle_initial",
+    LAST_NME = "last_name",
+    APPOINTED_DATE = "appointed",
+    YOB = "yob",
+    RACE_DESCR = "race",
+    SEX_CODE_CD = "gender"
   )
 }
 
 #' Key columns
 key <- function() {
-  c("last_name",
+  c(
+    "last_name",
     "first_name",
     "middle_initial",
     "appointed",
     "yob",
     "race",
-    "gender")
+    "gender"
+  )
 }
 
 #' Read the data, apply schema, and wrangle
 #' @export
 build <- function() {
-
   pl$
     concat(
-      lapply(
+      !!!lapply(
         list(
           path()$p058155,
           path()$p540798,
           path()$p596580
         ),
         \(x)
-        pl$
-          scan_csv(
-            x,
-            dtypes = get_schema(),
-            try_parse_dates = FALSE
-          )$
-          rename(
-            intersect(alias(), pl$scan_csv(x)$columns)
-          )$
-          select(
-            key()
-          )
+        scan_aliased(
+          x,
+          get_schema(),
+          alias(),
+          missing_columns = "insert"
+        )$
+          select(key())
       ),
       how = "vertical"
     )$
@@ -136,19 +132,14 @@ build <- function() {
             str$to_date(format = "%Y/%m/%d", strict = FALSE)
         )
     )$
-    # century correction for dates
-    with_columns(
-      pl$
-        when(
-          pl$col("appointed")$gt(as.Date("2022-12-31"))
-        )$
-        then(
-          pl$col("appointed")$dt$offset_by("-100y")
-        )$
-        otherwise(
-          pl$col("appointed")
-        )
-    )$
-    unique()
+  # century correction for dates
+  with_columns(
+    pl$when(
+      pl$col("appointed")$gt(as.Date("2022-12-31"))
+    )$then(
+      pl$col("appointed")$dt$offset_by("-100y")
+    )$otherwise(
+      pl$col("appointed")
+    )
+  )$unique()
 }
-

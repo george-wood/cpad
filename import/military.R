@@ -1,12 +1,14 @@
 '.__module__.'
 
-box::use(polars[pl])
+box::use(
+  polars[pl],
+  hash[hash],
+  proc/utility[scan_aliased, ls]
+)
 
 #' Source of data
 #' @export
 source <- function() {
-  box::use(hash[hash])
-
   hash(
     p606699 = 3
   )
@@ -14,8 +16,6 @@ source <- function() {
 
 #' Path to data
 path <- function() {
-  box::use(../proc/utility[ls])
-
   list(
     p606699 = ls("military", reg = "_3")
   )
@@ -25,63 +25,55 @@ path <- function() {
 #' @export
 get_schema <- function() {
   list(
-    LAST_NME = "character",
-    MI = "character",
-    FIRST_NME = "character",
-    DESCR = "character",
-    STAR_NO = "character",
-    RACE = "character",
-    SEX = "character",
-    BIRTH_YEAR = "integer",
-    APPOINTED_DATE = "character",
-    ACT_BRANCH = "character",
-    ACT_RANK = "character",
-    ACT_DATE_DISCHARGED = "character",
-    ACT_DISCHARGE_TYPE = "character",
-    START_DATE = "character",
-    RES_BRANCH = "character",
-    RES_RANK = "character",
-    RES_DATE_DISCHARGED = "character",
-    RES_DISCHARGE_TYPE = "character"
+    LAST_NME = pl$String,
+    MI = pl$String,
+    FIRST_NME = pl$String,
+    DESCR = pl$String,
+    STAR_NO = pl$String,
+    RACE = pl$String,
+    SEX = pl$String,
+    BIRTH_YEAR = pl$Int32,
+    APPOINTED_DATE = pl$String,
+    ACT_BRANCH = pl$String,
+    ACT_RANK = pl$String,
+    ACT_DATE_DISCHARGED = pl$String,
+    ACT_DISCHARGE_TYPE = pl$String,
+    START_DATE = pl$String,
+    RES_BRANCH = pl$String,
+    RES_RANK = pl$String,
+    RES_DATE_DISCHARGED = pl$String,
+    RES_DISCHARGE_TYPE = pl$String
   )
 }
 
 #' Alias for column names
 alias <- function() {
   list(
-    last_name = "LAST_NME",
-    middle_initial = "MI",
-    first_name = "FIRST_NME",
-    description = "DESCR",
-    star = "STAR_NO",
-    race = "RACE",
-    gender = "SEX",
-    yob = "BIRTH_YEAR",
-    appointed = "APPOINTED_DATE",
-    active_branch = "ACT_BRANCH",
-    active_rank = "ACT_RANK",
-    active_discharged = "ACT_DATE_DISCHARGED",
-    active_discharge_type = "ACT_DISCHARGE_TYPE",
-    reserve_start = "START_DATE",
-    reserve_branch = "RES_BRANCH",
-    reserve_rank = "RES_RANK",
-    reserve_discharged = "RES_DATE_DISCHARGED",
-    reserve_discharge_type = "RES_DISCHARGE_TYPE"
+    LAST_NME = "last_name",
+    MI = "middle_initial",
+    FIRST_NME = "first_name",
+    DESCR = "description",
+    STAR_NO = "star",
+    RACE = "race",
+    SEX = "gender",
+    BIRTH_YEAR = "yob",
+    APPOINTED_DATE = "appointed",
+    ACT_BRANCH = "active_branch",
+    ACT_RANK = "active_rank",
+    ACT_DATE_DISCHARGED = "active_discharged",
+    ACT_DISCHARGE_TYPE = "active_discharge_type",
+    START_DATE = "reserve_start",
+    RES_BRANCH = "reserve_branch",
+    RES_RANK = "reserve_rank",
+    RES_DATE_DISCHARGED = "reserve_discharged",
+    RES_DISCHARGE_TYPE = "reserve_discharge_type"
   )
 }
 
 #' Read the data, apply schema, and write dataset
 #' @export
 build <- function() {
-  pl$
-    scan_csv(
-      path()$p606699,
-      dtypes = get_schema(),
-      try_parse_dates = FALSE
-    )$
-    rename(
-      alias()
-    )$
+  scan_aliased(path()$p606699, get_schema(), alias())$
     with_columns(
       pl$col("appointed")$
         str$strptime(pl$Date, format = "%Y-%m-%d"),

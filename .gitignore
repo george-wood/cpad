@@ -1,7 +1,11 @@
 # Data
 db/
+archive/
 csv/
 private/
+
+# Temporary files
+compare.R
 
 # OS
 .DS_Store

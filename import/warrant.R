@@ -1,12 +1,14 @@
 '.__module__.'
 
-box::use(polars[pl])
+box::use(
+  polars[pl],
+  hash[hash],
+  proc/utility[scan_aliased, ls]
+)
 
 #' Source of data
 #' @export
 source <- function() {
-  box::use(hash[hash])
-
   hash(
     p638148 = 1
   )
@@ -14,8 +16,6 @@ source <- function() {
 
 #' Path to data
 path <- function() {
-  box::use(../proc/utility[ls])
-
   list(
     p638148 = ls("warrant/p638148", reg = "_1")
   )
@@ -25,73 +25,65 @@ path <- function() {
 #' @export
 get_schema <- function() {
   list(
-    WARRANT_NO = "character",
-    WARRANT_TYPE = "character",
-    WARRANT_EXECUTED_DATE = "character",
-    CITY = "character",
-    STATE = "character",
-    ZIP = "character",
-    BEAT = "character",
-    AREA = "character",
-    STREET_NO = "character",
-    STREET_DIR = "character",
-    STREET_NME = "character",
-    LAST_NME = "character",
-    FIRST_NME = "character",
-    MIDDLE_INITIAL = "character",
-    YOB = "integer",
-    YEAR_APPOINTED = "integer",
-    CPD_STAR_NO = "character",
-    UNIT_NO = "character",
-    BEAT_NO = "character",
-    ROLE = "character",
-    WARRANT_ISSUED_DATE = "character",
-    ARREST_MADE_I = "logical",
-    PROPERTY_RECOVERED_I = "logical"
+    WARRANT_NO = pl$String,
+    WARRANT_TYPE = pl$String,
+    WARRANT_EXECUTED_DATE = pl$String,
+    CITY = pl$String,
+    STATE = pl$String,
+    ZIP = pl$String,
+    BEAT = pl$String,
+    AREA = pl$String,
+    STREET_NO = pl$String,
+    STREET_DIR = pl$String,
+    STREET_NME = pl$String,
+    LAST_NME = pl$String,
+    FIRST_NME = pl$String,
+    MIDDLE_INITIAL = pl$String,
+    YOB = pl$Int32,
+    YEAR_APPOINTED = pl$Int32,
+    CPD_STAR_NO = pl$String,
+    UNIT_NO = pl$String,
+    BEAT_NO = pl$String,
+    ROLE = pl$String,
+    WARRANT_ISSUED_DATE = pl$String,
+    ARREST_MADE_I = pl$Boolean,
+    PROPERTY_RECOVERED_I = pl$Boolean
   )
 }
 
 #' Alias for column names
 alias <- function() {
   list(
-    uid_warrant = "WARRANT_NO",
-    type = "WARRANT_TYPE",
-    date = "WARRANT_EXECUTED_DATE",
-    city = "CITY",
-    state = "STATE",
-    zip = "ZIP",
-    beat = "BEAT",
-    area = "AREA",
-    street_number = "STREET_NO",
-    street_direction = "STREET_DIR",
-    street = "STREET_NME",
-    last_name = "LAST_NME",
-    first_name = "FIRST_NME",
-    middle_initial = "MIDDLE_INITIAL",
-    yob = "YOB",
-    appointed_year = "YEAR_APPOINTED",
-    star = "CPD_STAR_NO",
-    unit = "UNIT_NO",
-    beat_assignment = "BEAT_NO",
-    role = "ROLE",
-    issued = "WARRANT_ISSUED_DATE",
-    arrest = "ARREST_MADE_I",
-    property_recovered = "PROPERTY_RECOVERED_I"
+    WARRANT_NO = "uid_warrant",
+    WARRANT_TYPE = "type",
+    WARRANT_EXECUTED_DATE = "date",
+    CITY = "city",
+    STATE = "state",
+    ZIP = "zip",
+    BEAT = "beat",
+    AREA = "area",
+    STREET_NO = "street_number",
+    STREET_DIR = "street_direction",
+    STREET_NME = "street",
+    LAST_NME = "last_name",
+    FIRST_NME = "first_name",
+    MIDDLE_INITIAL = "middle_initial",
+    YOB = "yob",
+    YEAR_APPOINTED = "appointed_year",
+    CPD_STAR_NO = "star",
+    UNIT_NO = "unit",
+    BEAT_NO = "beat_assignment",
+    ROLE = "role",
+    WARRANT_ISSUED_DATE = "issued",
+    ARREST_MADE_I = "arrest",
+    PROPERTY_RECOVERED_I = "property_recovered"
   )
 }
 
 #' Read the data, apply schema, and write dataset
 #' @export
 build <- function() {
-  pl$
-    scan_csv(
-      path()$p638148,
-      dtypes = get_schema(),
-      try_parse_dates = FALSE
-    )$
-    rename(
-      alias()
-    )$
+  scan_aliased(path()$p638148, get_schema(), alias())$
     with_columns(
       pl$
         col("date")$

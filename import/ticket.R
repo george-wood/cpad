@@ -1,6 +1,9 @@
 '.__module__.'
 
-box::use(polars[pl])
+box::use(
+  polars[pl],
+  proc/utility[scan_aliased, ls]
+)
 
 #' Source of data
 #' @export
@@ -10,8 +13,6 @@ source <- function() {
 
 #' Path to data
 path <- function() {
-  box::use(../proc/utility[ls])
-
   list(
     parking = ls("ticket", reg = "parking_tickets.csv")
   )
@@ -21,74 +22,66 @@ path <- function() {
 #' @export
 get_schema <- function() {
   list(
-    ticket_number = "character",
-    issue_date = "character",
-    violation_location = "character",
-    license_plate_number = "character",
-    license_plate_state = "character",
-    license_plate_type = "character",
-    zipcode = "character",
-    violation_code = "character",
-    violation_description = "character",
-    unit = "character",
-    unit_description = "character",
-    vehicle_make = "character",
-    fine_level1_amount = "float64",
-    fine_level2_amount = "float64",
-    current_amount_due = "float64",
-    total_payments = "float64",
-    ticket_queue = "character",
-    ticket_queue_date = "character",
-    notice_level = "character",
-    notice_number = "character",
-    hearing_disposition = "character",
-    officer = "character",
-    normalized_address = "character",
-    year = "integer",
-    month = "integer",
-    hour = "integer",
-    ward = "character",
-    tract_id = "character",
-    blockgroup_geoid = "character",
-    community_area_number = "character",
-    community_area_name = "character",
-    geocode_accuracy = "float64",
-    geocode_accuracy_type = "character",
-    geocoded_address = "character",
-    geocoded_lng = "float64",
-    geocoded_lat = "float64"
+    ticket_number = pl$String,
+    issue_date = pl$String,
+    violation_location = pl$String,
+    license_plate_number = pl$String,
+    license_plate_state = pl$String,
+    license_plate_type = pl$String,
+    zipcode = pl$String,
+    violation_code = pl$String,
+    violation_description = pl$String,
+    unit = pl$String,
+    unit_description = pl$String,
+    vehicle_make = pl$String,
+    fine_level1_amount = pl$Float64,
+    fine_level2_amount = pl$Float64,
+    current_amount_due = pl$Float64,
+    total_payments = pl$Float64,
+    ticket_queue = pl$String,
+    ticket_queue_date = pl$String,
+    notice_level = pl$String,
+    notice_number = pl$String,
+    hearing_disposition = pl$String,
+    officer = pl$String,
+    normalized_address = pl$String,
+    year = pl$Int32,
+    month = pl$Int32,
+    hour = pl$Int32,
+    ward = pl$String,
+    tract_id = pl$String,
+    blockgroup_geoid = pl$String,
+    community_area_number = pl$String,
+    community_area_name = pl$String,
+    geocode_accuracy = pl$Float64,
+    geocode_accuracy_type = pl$String,
+    geocoded_address = pl$String,
+    geocoded_lng = pl$Float64,
+    geocoded_lat = pl$Float64
   )
 }
 
 #' Alias for column names
 alias <- function() {
   list(
-    uid_ticket = "ticket_number",
-    dt = "issue_date",
-    star = "officer",
-    longitude = "geocoded_lng",
-    latitude = "geocoded_lat"
+    ticket_number = "uid_ticket",
+    issue_date = "dt",
+    officer = "star",
+    geocoded_lng = "longitude",
+    geocoded_lat = "latitude"
   )
 }
 
 #' Read the data, apply schema, and write dataset
 #' @export
 build <- function() {
-  pl$
-    scan_csv(
-      path()$parking,
-      dtypes = get_schema(),
-      try_parse_dates = FALSE
-    )$
-    rename(
-      alias()
-    )$
+  scan_aliased(path()$parking, get_schema(), alias())$
     filter(
       pl$col("year")$gt(2013)
     )$
     with_columns(
       pl$
-        col("issue_date")$
+        col("dt")$
         str$to_datetime(
           format = "%Y-%m-%d %H:%M:%S",
           strict = FALSE
@@ -107,4 +100,3 @@ build <- function() {
       pl$col("dt")$is_not_null()
     )
 }
-
