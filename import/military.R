@@ -2,27 +2,17 @@
 
 box::use(
   polars[pl],
-  hash[hash],
-  proc/utility[scan_aliased, ls]
+  proc/utility[scan_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  hash(
-    p606699 = 3
-  )
-}
 
 #' Path to data
 path <- function() {
   list(
-    p606699 = ls("military", reg = "_3")
+    p606699 = data_files("military", reg = "_3")
   )
 }
 
 #' Define the schema
-#' @export
 get_schema <- function() {
   list(
     LAST_NME = pl$String,

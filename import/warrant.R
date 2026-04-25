@@ -2,27 +2,17 @@
 
 box::use(
   polars[pl],
-  hash[hash],
-  proc/utility[scan_aliased, ls]
+  proc/utility[scan_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  hash(
-    p638148 = 1
-  )
-}
 
 #' Path to data
 path <- function() {
   list(
-    p638148 = ls("warrant/p638148", reg = "_1")
+    p638148 = data_files("warrant/p638148", reg = "_1")
   )
 }
 
 #' Define the schema
-#' @export
 get_schema <- function() {
   list(
     WARRANT_NO = pl$String,

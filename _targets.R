@@ -30,15 +30,13 @@
 #' Or directly:
 #'   Rscript -e 'targets::tar_make()'
 library(targets)
-
-# {targets} always runs with the project root as cwd, so getwd() is the
-# right value here and makes the file portable across machines.
 options(box.path = getwd())
 
 box::use(
   fs[dir_create],
   import/arrest,
   import/assignment,
+  import/award,
   import/beat,
   import/contact,
   import/force,
@@ -49,6 +47,7 @@ box::use(
   proc/officer,
   proc/uid,
   proc/aid,
+  proc/diagnostics,
   proc/spec
 )
 
@@ -114,22 +113,29 @@ officer_target <- tar_target_raw(
   )
 )
 
-keyed_targets <- lapply(Filter(function(s) s$key != "none", specs), function(s) {
-  raw_sym <- as.symbol(paste0("raw_", s$name))
-  out_path <- spec$keyed_path(s)
-  cmd <- if (identical(s$key, "regular")) {
-    substitute(
-      sink_lf(uid$join(IN, ON, officer_path = officer_parquet), OUT),
-      list(IN = raw_sym, ON = s$on, OUT = out_path)
-    )
-  } else {  # "asof"
-    substitute(
-      sink_lf(uid$join_asof(IN, by = BY, officer_path = officer_parquet), OUT),
-      list(IN = raw_sym, BY = s$by, OUT = out_path)
-    )
+keyed_targets <- lapply(
+  Filter(function(s) s$key != "none", specs),
+  function(s) {
+    raw_sym <- as.symbol(paste0("raw_", s$name))
+    out_path <- spec$keyed_path(s)
+    cmd <- if (identical(s$key, "regular")) {
+      substitute(
+        sink_lf(uid$join(IN, ON, officer_path = officer_parquet), OUT),
+        list(IN = raw_sym, ON = s$on, OUT = out_path)
+      )
+    } else {
+      # "asof"
+      substitute(
+        sink_lf(
+          uid$join_asof(IN, by = BY, officer_path = officer_parquet),
+          OUT
+        ),
+        list(IN = raw_sym, BY = s$by, OUT = out_path)
+      )
+    }
+    tar_target_raw(paste0("keyed_", s$name), cmd)
   }
-  tar_target_raw(paste0("keyed_", s$name), cmd)
-})
+)
 
 # AID stage pulls in keyed_assignment regardless of which event source it
 # belongs to; that's how the asof-join lines up events with shifts.
@@ -145,4 +151,33 @@ event_targets <- lapply(Filter(function(s) s$event, specs), function(s) {
   )
 })
 
-c(raw_targets, list(officer_target), keyed_targets, event_targets)
+# Pipeline-health report. Depends on every event_* target plus the
+# assignment file (for the coverage bounds), so it re-renders only when
+# the underlying parquets change. Runs last in the DAG.
+event_specs <- Filter(function(s) s$event, specs)
+event_syms <- lapply(event_specs, function(s) {
+  as.symbol(paste0("event_", s$name))
+})
+event_names <- vapply(event_specs, function(s) s$name, character(1))
+diagnostics_target <- tar_target_raw(
+  "diagnostics_md",
+  substitute(
+    diagnostics$build(
+      stats::setNames(EVT, NMS),
+      keyed_assignment,
+      "diagnostics.md"
+    ),
+    list(
+      EVT = as.call(c(list(quote(c)), event_syms)),
+      NMS = event_names
+    )
+  )
+)
+
+c(
+  raw_targets,
+  list(officer_target),
+  keyed_targets,
+  event_targets,
+  list(diagnostics_target)
+)

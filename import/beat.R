@@ -2,27 +2,17 @@
 
 box::use(
   polars[pl],
-  hash[hash],
-  proc/utility[scan_aliased, ls]
+  proc/utility[scan_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  hash(
-    p621077 = 1
-  )
-}
 
 #' Path to data
 path <- function() {
   list(
-    p621077 = ls("beat/p621077", reg = "_1")
+    p621077 = data_files("beat/p621077", reg = "_1")
   )
 }
 
 #' Define the schema
-#' @export
 get_schema <- function() {
   list(
     BEAT = pl$String,

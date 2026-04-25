@@ -27,6 +27,7 @@ sources <- function() {
   list(
     list(name = "arrest",     key = "regular", on = k,                                        event = TRUE),
     list(name = "assignment", key = "regular", on = k,                                        event = FALSE),
+    list(name = "award",      key = "regular", on = k,                                        event = FALSE),
     list(name = "beat",       key = "none",                                                   event = FALSE),
     list(name = "contact",    key = "asof",    by = c("last_name", "first_name"),             event = TRUE),
     list(name = "force",      key = "asof",    by = c("last_name", "first_name", "appointed"),event = TRUE),
@@ -69,12 +70,3 @@ get <- function(name) {
   for (s in sources()) if (identical(s$name, name)) return(s)
   stop("unknown source: ", name)
 }
-
-# --- Back-compat lookups used by the old, non-targets entry points -----
-# Kept minimal; _targets.R drives off the table above directly.
-
-#' Regular UID join key for a source. @export
-on_for <- function(name) get(name)$on
-
-#' Asof UID join by-columns for a source. @export
-by_for <- function(name) get(name)$by

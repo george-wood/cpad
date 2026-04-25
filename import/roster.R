@@ -2,31 +2,19 @@
 
 box::use(
   polars[pl],
-  hash[hash],
-  proc/utility[scan_aliased, ls]
+  proc/utility[scan_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  hash(
-    p058155 = 0,
-    p540798 = 0,
-    p596580 = 1:4
-  )
-}
 
 #' Path to data
 path <- function() {
   list(
-    p058155 = ls("roster/p058155"),
-    p540798 = ls("roster/p540798"),
-    p596580 = ls("roster/p596580")
+    p058155 = data_files("roster/p058155"),
+    p540798 = data_files("roster/p540798"),
+    p596580 = data_files("roster/p596580")
   )
 }
 
 #' Define the schema
-#' @export
 get_schema <- function() {
   list(
     # p058155

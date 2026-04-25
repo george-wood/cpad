@@ -2,24 +2,17 @@
 
 box::use(
   polars[pl],
-  proc/utility[scan_aliased, ls]
+  proc/utility[scan_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  "www.propublica.org/datastore/dataset/chicago-parking-ticket-data"
-}
 
 #' Path to data
 path <- function() {
   list(
-    parking = ls("ticket", reg = "parking_tickets.csv")
+    parking = data_files("ticket", reg = "parking_tickets.csv")
   )
 }
 
 #' Define the schema
-#' @export
 get_schema <- function() {
   list(
     ticket_number = pl$String,

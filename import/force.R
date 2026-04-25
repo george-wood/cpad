@@ -2,31 +2,18 @@
 
 box::use(
   polars[pl],
-  hash[hash],
-  proc/utility[scan_aliased, ls]
+  proc/utility[scan_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  hash(
-    p046360 = c(0, 2),
-    p456008 = c(0, 2),
-    p461899 = c(0, 2),
-    p583646 = c(1, 2)
-  )
-}
 
 #' Path to data
 path <- function() {
   list(
-    report = ls("trr/", reg = "_0|p583646_1"),
-    action = ls("trr/", reg = "_2")
+    report = data_files("trr/", reg = "_0|p583646_1"),
+    action = data_files("trr/", reg = "_2")
   )
 }
 
 #' Define the schema
-#' @export
 get_schema <- function() {
   list(
     # report

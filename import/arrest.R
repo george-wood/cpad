@@ -2,29 +2,18 @@
 
 box::use(
   polars[pl],
-  hash[hash],
-  proc/utility[scan_aliased, ls]
+  proc/utility[scan_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  hash(
-    p701162 = 2:6,
-    p708085 = 1:5
-  )
-}
 
 #' Path to data
 path <- function() {
   list(
-    p701162 = ls("arrest/p701162"),
-    p708085 = ls("arrest/p708085")
+    p701162 = data_files("arrest/p701162"),
+    p708085 = data_files("arrest/p708085")
   )
 }
 
 #' Define the schema
-#' @export
 get_schema <- function() {
   list(
     # p701162

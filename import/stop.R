@@ -2,27 +2,17 @@
 
 box::use(
   polars[pl],
-  hash[hash],
-  proc/utility[rename_aliased, ls]
+  proc/utility[rename_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  hash(
-    p644845 = 0
-  )
-}
 
 #' Path to data
 path <- function() {
   list(
-    p646845 = ls("isr")
+    p646845 = data_files("isr")
   )
 }
 
 #' Define the schema
-#' @export
 get_schema <- function() {
   list(
     CONTACT_CARD_ID = pl$String,
@@ -482,7 +472,12 @@ melt <- function(q) {
         lazy(),
       how = "left",
       on = "uid_contact"
-    )
+    )$
+    # Drop empty role rows (stops with only a primary officer still emit
+    # `second`/`supervisor` rows with every officer field null after the
+    # pivot; those rows are structurally unmatchable and not useful
+    # downstream).
+    filter(pl$col("last_name")$is_not_null())
 }
 
 #' Wrapper to scan the data, apply schema, and wrangle

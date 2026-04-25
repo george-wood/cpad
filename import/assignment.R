@@ -2,36 +2,17 @@
 
 box::use(
   polars[pl],
-  hash[hash],
-  glue[glue],
-  proc/utility[scan_aliased, ls]
+  proc/utility[scan_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  hash(
-    p602033 = c(
-      glue("2014_{0:3}"),
-      glue("2015_{0:3}"),
-      glue("2016_{0:3}"),
-      glue("2017_{0:4}"),
-      glue("2018_{0:4}"),
-      glue("2019_{0:4}"),
-      glue("2020_{0:4}")
-    )
-  )
-}
 
 #' Path to data
 path <- function() {
   list(
-    p602033 = ls("assignment/p602033")
+    p602033 = data_files("assignment/p602033")
   )
 }
 
 #' Define the schema
-#' @export
 get_schema <- function() {
   list(
     AA_DATE = pl$String,

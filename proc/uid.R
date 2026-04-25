@@ -48,6 +48,16 @@ join <- function(db, on, validate = TRUE,
 }
 
 #' Join UID to other data using asof join
+#'
+#' Two-pass strategy:
+#'   1. Forward asof on yob_lower -> yob within the `by`-group. This is
+#'      the primary match path.
+#'   2. Fallback for rows the asof missed: exact join on `by`-cols only,
+#'      accepted iff that by-group has a single unique uid in the officer
+#'      table. The asof can fail when an officer's yob is null (any null
+#'      comparison evaluates to null, so no asof candidate is found); the
+#'      fallback recovers those rows without disambiguation risk because
+#'      the by-group is uid-unique.
 #' @export
 join_asof <- function(db, validate = TRUE, tolerance = NULL,
                       left_on = "yob_lower", right_on = "yob", ..., by,
@@ -55,14 +65,16 @@ join_asof <- function(db, validate = TRUE, tolerance = NULL,
 
   drop_cols <- c(setdiff(by, "appointed"), left_on, right_on)
 
-  #' Both DataFrames must be sorted by the join_asof key
-  res <-
+  officer <- pl$scan_parquet(officer_path)
+
+  # Primary: forward asof within by-group. Both sides must be sorted by
+  # the asof key.
+  primary <-
     pl$
     scan_parquet(db)$
     sort(left_on)$
     join_asof(
-      other = pl$
-        scan_parquet(officer_path)$
+      other = officer$
         select("uid", !!!by, right_on)$
         unique()$
         sort(right_on),
@@ -71,8 +83,25 @@ join_asof <- function(db, validate = TRUE, tolerance = NULL,
       strategy = "forward",
       tolerance = tolerance,
       by = by
+    )
+
+  # Fallback: by-group -> uid, only when the group is uid-unique. Coalesce
+  # so primary asof matches always win; fallback only fills nulls.
+  fallback <- officer$
+    select("uid", !!!by)$
+    unique()$
+    group_by(!!!by)$
+    agg(
+      pl$col("uid")$first()$alias("uid_fb"),
+      pl$len()$alias("n_uids_fb")
     )$
-    drop(!!!drop_cols, pl$col("^.*_right$"))
+    filter(pl$col("n_uids_fb")$eq(1))$
+    drop("n_uids_fb")
+
+  res <- primary$
+    join(fallback, on = by, how = "left")$
+    with_columns(pl$coalesce("uid", "uid_fb")$alias("uid"))$
+    drop("uid_fb", !!!drop_cols, pl$col("^.*_right$"))
 
   if (validate) {
     expect_equal(

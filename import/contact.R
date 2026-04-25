@@ -2,22 +2,13 @@
 
 box::use(
   polars[pl],
-  hash[hash],
-  proc/utility[scan_aliased, ls]
+  proc/utility[scan_aliased, data_files]
 )
-
-#' Source of data
-#' @export
-source <- function() {
-  hash(
-    p058306 = 2012:2015
-  )
-}
 
 #' Path to data
 path <- function() {
   list(
-    p058306 = ls("contact/p058306")
+    p058306 = data_files("contact/p058306")
   )
 }
 
@@ -177,9 +168,9 @@ alias_modern_2015 <- function() {
   a
 }
 
-#' Unified schema/alias for back-compat with callers that expected one.
-#' @export
-get_schema <- function() c(schema_legacy(), schema_modern())
+#' Unified alias. Used internally by `melt()` to discover the canonical
+#' role/base column split; a single map is enough because legacy and
+#' modern both map to the same canonical names.
 alias <- function() c(alias_legacy(), alias_modern())
 
 #' Split source paths by header convention. Uses the filename year.
@@ -319,7 +310,11 @@ melt <- function(q) {
         cast(pl$Int32)$
         alias("yob_lower")
     )$
-    drop("age")
+    drop("age")$
+    # Drop empty role rows (contacts with only a primary officer still
+    # emit a `second` row with every officer field null after the pivot;
+    # those rows are structurally unmatchable and not useful downstream).
+    filter(pl$col("last_name")$is_not_null())
 }
 
 #' Wrapper: scan, wrangle, and assert we didn't silently drop a pile of

@@ -5,10 +5,13 @@ box::use(
   polars[pl]
 )
 
-#' List files in a directory with regex option
+#' List data files under a subpath of the raw-data root.
+#'
+#' Renamed from `ls` to avoid shadowing `base::ls` — reading
+#' `ls("arrest/p701162")` in an import module looked like an R primitive.
 #' @export
-ls <- function(path, reg = "\\.csv$", base = "~/Documents/data/cpd/",
-               ...) {
+data_files <- function(path, reg = "\\.csv$",
+                       base = "~/Documents/data/cpd/", ...) {
   dir_ls(
     path    = paste0(base, path),
     regexp  = reg,
