@@ -2,7 +2,7 @@
 
 box::use(
   polars[pl],
-  proc/utility[scan_aliased, data_files]
+  proc/utility[scan_aliased, data_files, assert_low_drop]
 )
 
 #' Path to data
@@ -322,22 +322,9 @@ melt <- function(q) {
 #' schema drift (the kind that produced the 2014/2015 data-loss bug).
 #' @export
 build <- function() {
-  melted <- melt(query())
-  result <- melted$filter(pl$col("dt")$is_not_null())
-
-  before <- as.data.frame(melted$select(pl$len())$collect())[[1]]
-  after  <- as.data.frame(result$select(pl$len())$collect())[[1]]
-  dropped <- before - after
-  if (before > 0L && dropped / before > 0.05) {
-    warning(sprintf(
-      paste0(
-        "contact$build(): dt_is_null filter dropped %d of %d rows (%.1f%%). ",
-        "Unusually high — possible schema mismatch; check that every ",
-        "source CSV's DATE/TIME columns are covered by an alias."
-      ),
-      dropped, before, 100 * dropped / before
-    ))
-  }
-
-  result
+  assert_low_drop(
+    melt(query()),
+    pl$col("dt")$is_not_null(),
+    "contact$build(): dt_is_not_null"
+  )
 }

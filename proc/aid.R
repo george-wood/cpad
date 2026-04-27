@@ -6,125 +6,135 @@ box::use(
   cli[cli_alert_info]
 )
 
-#' Join AID to events via nearest-shift asof (bidirectional).
+#' Join AID to events via per-pfd-class bidirectional asof.
 #'
-#' For every event, find the closest shift held by the same officer
-#' and attach its AID. "Closest" means smallest gap between event.dt
-#' and the shift interval [dt_start, dt_end]:
-#'   - if event.dt is inside [dt_start, dt_end], gap = 0
-#'   - otherwise gap is the distance to the nearer endpoint
-#' Only shifts within `tolerance` of the event on the relevant side
-#' are considered; events with no shift in range get aid = null.
+#' For every event we look for shifts held by the same officer that
+#' cover the event under one of two windows around each shift's
+#' interval [dt_start, dt_end]:
 #'
-#' `strict` flag: TRUE iff event.dt falls in [dt_start - 1h, dt_end + 1h]
-#' of the matched shift. FALSE means the match is a looser
-#' nearest-neighbor attach (officer had a nearby shift but wasn't on
-#' one at the event time). NULL when aid is null.
+#'   strict:  [dt_start - 1h, dt_end + 1h]
+#'   loose:   [dt_start - 1h, dt_end + 3h]
 #'
-#' Rate is reported on the panel denominator: in-bounds events with a
-#' known UID. Comparable to the aid_diagnostic.R tables.
+#' Events that fall in neither window of any shift get aid = null
+#' (no nearest-neighbor attach beyond the loose window).
+#'
+#' Two passes are run, one per `present_for_duty` class. Within a pass,
+#' the closer of the backward and forward asof candidates wins; across
+#' passes, the pfd=TRUE result is preferred whenever it found anything,
+#' so a present_for_duty shift beats a not-present shift wherever both
+#' would cover the event.
+#'
+#' `strict` flag is TRUE iff the picked shift covers the event under
+#' the strict window, FALSE under loose-only, null when aid is null.
 #' @export
 join_asof <- function(
   db,
   validate = TRUE,
-  tolerance = "24h",
   assignment_path = "db/assignment.parquet"
 ) {
   a <- assignment_path
 
-  # Shifts, deduped, positive-duration. Sort by (uid, dt_start,
-  # present_for_duty) so that on ties, a present_for_duty = TRUE row
-  # wins the asof pick (sort is stable, drop preserves order).
-  assignment <-
-    pl$scan_parquet(a)$select(
-      "aid", "uid", "dt_start", "dt_end", "present_for_duty"
-    )$drop_nulls(
-      "dt_start"
-    )$filter(
-      pl$col("dt_start")$lt(pl$col("dt_end"))
-    )$unique()$sort(
-      "uid", "dt_start", "present_for_duty"
-    )$drop("present_for_duty")
-
-  # Two rename'd copies of the shift table so the backward and forward
-  # asof joins can both write their matched shift's columns onto the
-  # left frame without colliding.
-  sh_b <- assignment$rename(
-    aid = "aid_b", dt_start = "dt_start_b", dt_end = "dt_end_b"
-  )
-  sh_f <- assignment$rename(
-    aid = "aid_f", dt_start = "dt_start_f", dt_end = "dt_end_f"
-  )
+  asg_base <- pl$scan_parquet(a)$select(
+    "aid", "uid", "dt_start", "dt_end", "present_for_duty"
+  )$drop_nulls("dt_start")$
+    filter(pl$col("dt_start")$lt(pl$col("dt_end")))$
+    unique()
 
   events <- pl$scan_parquet(db)$sort("uid", "dt")
 
-  # Backward: latest shift starting at or before event.dt. Captures
-  # both "event inside a shift" and "event after a shift ended".
-  # Forward: earliest shift starting at or after event.dt.
-  joined <-
-    events$join_asof(
-      other = sh_b,
-      left_on = "dt", right_on = "dt_start_b",
-      strategy = "backward", by = "uid",
-      tolerance = tolerance
-    )$join_asof(
-      other = sh_f,
-      left_on = "dt", right_on = "dt_start_f",
-      strategy = "forward", by = "uid",
-      tolerance = tolerance
-    )
+  # One asof pass against shifts of a given pfd-class. Adds three
+  # columns named with the supplied suffix:
+  #   aid_<sfx>     matched shift's aid (or null)
+  #   strict_<sfx>  TRUE if event is in strict window, FALSE if in
+  #                 loose-only band, null if no match
+  #   gap_<sfx>     distance to picked shift in seconds (null if no
+  #                 match) — kept around so the diagnostic / debugging
+  #                 surface has it; dropped before returning.
+  pass <- function(lf, pfd, sfx) {
+    asg <- asg_base$
+      filter(pl$col("present_for_duty")$eq(pfd))$
+      drop("present_for_duty")$
+      sort("uid", "dt_start")
 
-  # Per-side gap in seconds. For the backward shift, if the event is
-  # inside [dt_start_b, dt_end_b] gap is 0; otherwise it's
-  # dt - dt_end_b. For the forward shift, gap is dt_start_f - dt
-  # (forward shifts are always in the future, so never containing).
-  # Null on either side when no shift was found within tolerance.
-  with_gaps <- joined$with_columns(
-    pl$when(
-      pl$col("dt")$le(pl$col("dt_end_b"))
-    )$then(
-      pl$lit(0L)$cast(pl$Int64)
-    )$otherwise(
-      pl$col("dt")$sub(pl$col("dt_end_b"))$dt$total_seconds()
-    )$alias("gap_b"),
-    pl$col("dt_start_f")$sub(pl$col("dt"))$dt$total_seconds()$alias("gap_f")
-  )
+    sh_b <- asg$rename(aid = "aid_b", dt_start = "ds_b", dt_end = "de_b")
+    sh_f <- asg$rename(aid = "aid_f", dt_start = "ds_f", dt_end = "de_f")
 
-  # Pick the closer side. On ties, prefer backward (arbitrary but
-  # stable). The `strict` expression mirrors the aid pick exactly so
-  # the flag always refers to the same shift whose aid got attached.
-  strict_b <- pl$col("dt")$is_between(
-    lower_bound = pl$col("dt_start_b")$dt$offset_by("-1h"),
-    upper_bound = pl$col("dt_end_b")$dt$offset_by("1h")
-  )
-  strict_f <- pl$col("dt")$is_between(
-    lower_bound = pl$col("dt_start_f")$dt$offset_by("-1h"),
-    upper_bound = pl$col("dt_end_f")$dt$offset_by("1h")
-  )
+    # Tolerance must cover (max shift length + 3h post-shift slack) on
+    # the backward side so an event in a shift's loose tail is still
+    # within reach. 30h is comfortable; the window check below is what
+    # actually enforces the cutoff.
+    j <- lf$
+      join_asof(
+        other = sh_b,
+        left_on = "dt", right_on = "ds_b",
+        strategy = "backward", by = "uid", tolerance = "30h"
+      )$
+      join_asof(
+        other = sh_f,
+        left_on = "dt", right_on = "ds_f",
+        strategy = "forward", by = "uid", tolerance = "30h"
+      )
 
-  pick_aid <-
-    pl$when(pl$col("gap_b")$is_null())$then(pl$col("aid_f"))$
-      when(pl$col("gap_f")$is_null())$then(pl$col("aid_b"))$
-      when(pl$col("gap_b")$le(pl$col("gap_f")))$then(pl$col("aid_b"))$
-      otherwise(pl$col("aid_f"))
+    # Distance from event.dt to each candidate shift's interval, in s.
+    # Backward shift: 0 if event in [ds_b, de_b], else dt - de_b.
+    # Forward shift: ds_f - dt (always positive; forward shifts are by
+    # construction in the future, so never containing).
+    gap_b <- pl$when(pl$col("dt")$le(pl$col("de_b")))$
+      then(pl$lit(0L)$cast(pl$Int64))$
+      otherwise(pl$col("dt")$sub(pl$col("de_b"))$dt$total_seconds())
+    gap_f <- pl$col("ds_f")$sub(pl$col("dt"))$dt$total_seconds()
 
-  pick_strict <-
-    pl$when(pl$col("gap_b")$is_null())$then(strict_f)$
-      when(pl$col("gap_f")$is_null())$then(strict_b)$
-      when(pl$col("gap_b")$le(pl$col("gap_f")))$then(strict_b)$
-      otherwise(strict_f)
+    # Window membership.
+    #   backward: ds_b <= dt is guaranteed by the asof, so the left
+    #     edge (ds_b - 1h) is auto-satisfied; we just check the right
+    #     edge against gap_b.
+    #   forward: ds_f >= dt is guaranteed; the right edge (de_f + ...)
+    #     is auto-satisfied; we check the left edge (ds_f - dt <= 1h).
+    #     Pre-shift events have the same -1h padding under both
+    #     windows, so a forward match is always strict.
+    in_strict_b <- gap_b$le(3600L)
+    in_loose_b  <- gap_b$le(3L * 3600L)
+    in_strict_f <- gap_f$le(3600L)
+    in_loose_f  <- in_strict_f
 
-  picked <- with_gaps$with_columns(
-    pick_aid$alias("aid"),
-    pick_strict$alias("strict")
+    valid_b <- pl$col("ds_b")$is_not_null() & in_loose_b
+    valid_f <- pl$col("ds_f")$is_not_null() & in_loose_f
+
+    # Pick the side with the smaller gap. Tie -> backward (arbitrary
+    # but stable; gap_b == gap_f == 0 can only happen when the event
+    # is on the boundary of two adjacent shifts).
+    pick_b <- valid_b & (valid_f$not() | gap_b$le(gap_f))
+    pick_f <- valid_f & valid_b$not() | (valid_f & valid_b & gap_f$lt(gap_b))
+
+    aid <- pl$when(pick_b)$then(pl$col("aid_b"))$
+      when(pick_f)$then(pl$col("aid_f"))
+    strict <- pl$when(pick_b)$then(in_strict_b)$
+      when(pick_f)$then(in_strict_f)
+    gap <- pl$when(pick_b)$then(gap_b)$
+      when(pick_f)$then(gap_f)
+
+    j$with_columns(
+      aid$alias(paste0("aid_", sfx)),
+      strict$alias(paste0("strict_", sfx)),
+      gap$alias(paste0("gap_", sfx))
+    )$drop("aid_b", "aid_f", "ds_b", "de_b", "ds_f", "de_f")
+  }
+
+  joined <- pass(pass(events, TRUE, "T"), FALSE, "F")
+
+  # Combine: prefer pfd=TRUE result if it found anything.
+  picked <- joined$with_columns(
+    pl$coalesce("aid_T", "aid_F")$alias("aid"),
+    pl$when(pl$col("aid_T")$is_not_null())$
+      then(pl$col("strict_T"))$
+      otherwise(pl$col("strict_F"))$
+      alias("strict")
   )$drop(
-    "aid_b", "aid_f",
-    "dt_start_b", "dt_end_b", "dt_start_f", "dt_end_f",
-    "gap_b", "gap_f"
+    "aid_T", "aid_F", "strict_T", "strict_F", "gap_T", "gap_F"
   )
 
-  # Panel-denominator match rate: aid non-null among (in-bounds events
-  # with uid). Also report what fraction of matches are strict.
+  # Panel-denominator match rate: aid non-null among in-bounds events
+  # with uid. Strict share is conditional on having an aid.
   lo <- as.data.frame(
     pl$scan_parquet(a)$select(pl$min("dt_start"))$collect()
   )[[1]]

@@ -2,7 +2,7 @@
 
 box::use(
   polars[pl],
-  proc/utility[rename_aliased, data_files]
+  proc/utility[rename_aliased, data_files, assert_low_drop]
 )
 
 #' Path to data
@@ -480,13 +480,13 @@ melt <- function(q) {
     filter(pl$col("last_name")$is_not_null())
 }
 
-#' Wrapper to scan the data, apply schema, and wrangle
+#' Wrapper to scan the data, apply schema, and wrangle. Canary on the
+#' `dt is_not_null` filter — see contact$build() for the rationale.
 #' @export
-build <- function(p646845) {
-  melt(
-    query()
-  )$
-    filter(
-      pl$col("dt")$is_not_null()
-    )
+build <- function() {
+  assert_low_drop(
+    melt(query()),
+    pl$col("dt")$is_not_null(),
+    "stop$build(): dt_is_not_null"
+  )
 }

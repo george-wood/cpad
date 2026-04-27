@@ -34,7 +34,14 @@ sources <- function() {
     list(name = "military",   key = "regular", on = k,                                        event = FALSE),
     list(name = "roster",     key = "none",                                                   event = FALSE),
     list(name = "stop",       key = "regular", on = k,                                        event = TRUE),
-    list(name = "warrant",    key = "regular", on = gsub("appointed", "appointed_year", k),   event = FALSE)
+    # warrant's CSV ships YEAR_APPOINTED (Int32), not a full Date, so its
+    # join key swaps `appointed` for `appointed_year` against the
+    # `appointed_year` column generated in `proc/officer.R`.
+    list(
+      name = "warrant", key = "regular",
+      on = c("first_name", "middle_initial", "last_name", "appointed_year", "yob"),
+      event = FALSE
+    )
   )
 }
 

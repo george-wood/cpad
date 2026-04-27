@@ -2,7 +2,7 @@
 
 box::use(
   polars[pl],
-  proc/utility[scan_aliased, data_files]
+  proc/utility[scan_aliased, data_files, assert_low_drop]
 )
 
 #' Path to data
@@ -137,10 +137,14 @@ alias <- function() {
   )
 }
 
-#' Read the data, apply schema, and write dataset
+#' Read the data, apply schema, and write dataset.
+#'
+#' The `dt is_not_null` filter at the bottom is a canary: a high
+#' dropout rate signals upstream schema drift (e.g. a packet whose
+#' date columns aren't covered by `alias()`).
 #' @export
 build <- function() {
-  pl$concat(
+  pre_filter <- pl$concat(
     !!!lapply(
       path()$report,
       \(x) scan_aliased(x, get_schema(), alias())
@@ -226,8 +230,11 @@ build <- function() {
         unique(),
       on = "uid_force",
       how = "left"
-    )$
-    filter(
-      pl$col("dt")$is_not_null()
     )
+
+  assert_low_drop(
+    pre_filter,
+    pl$col("dt")$is_not_null(),
+    "force$build(): dt_is_not_null"
+  )
 }

@@ -13,10 +13,12 @@
 #'                 coverage window. The population for which a shift
 #'                 match is even possible.
 #'   strict match  among in-timeframe rows, % with non-null aid where
-#'                 event.dt falls in [dt_start - 1h, dt_end + 1h] of
-#'                 the matched shift.
+#'                 event.dt falls in the strict window
+#'                 [dt_start - 1h, dt_end + 1h] of the matched shift.
 #'   loose match   among in-timeframe rows, % with non-null aid where
-#'                 event.dt is outside that +-1h window.
+#'                 event.dt falls in the loose-only band
+#'                 (dt_end + 1h, dt_end + 3h] of the matched shift
+#'                 (i.e., matched but outside the strict window).
 
 box::use(
   polars[pl]

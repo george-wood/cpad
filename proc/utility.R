@@ -44,3 +44,28 @@ scan_aliased <- function(source, schema, alias, ...) {
   )
   rename_aliased(lf, alias)
 }
+
+#' Apply a `should rarely fire` filter and warn if the dropout rate
+#' exceeds `threshold`. Returns the filtered lazy frame.
+#'
+#' Intended for canary filters like `dt is_not_null` after a melt,
+#' where a high dropout rate signals upstream schema drift (the kind
+#' that produced the contact 2014/2015 data-loss bug). `label` is
+#' surfaced in the warning so callers know which site fired.
+#' @export
+assert_low_drop <- function(lf, keep, label, threshold = 0.05) {
+  result <- lf$filter(keep)
+  before <- as.data.frame(lf$select(pl$len())$collect())[[1]]
+  after  <- as.data.frame(result$select(pl$len())$collect())[[1]]
+  dropped <- before - after
+  if (before > 0L && dropped / before > threshold) {
+    warning(sprintf(
+      paste0(
+        "%s: filter dropped %d of %d rows (%.1f%%). ",
+        "Unusually high — possible upstream schema drift."
+      ),
+      label, dropped, before, 100 * dropped / before
+    ))
+  }
+  result
+}
